@@ -1,10 +1,5 @@
 from tkinter import Toplevel
 
-from customtkinter import *
-
-
-
-
 
 class AddAbonentWindow:
     def __init__(self,parent, width, height, title="Учет коммунальных услуг АО_Корммаш", resizable=(False, False),
@@ -18,7 +13,7 @@ class AddAbonentWindow:
         self.grab_focus()
 
 
-    # метод который создает фокус на окне
+    # метод который создает фокус на дочернем окне
     def grab_focus(self):
         self.root.grab_set() # фокус на окнe
         self.root.focus_set() # фокус на окнe
