@@ -21,6 +21,7 @@ class Window (ctk.CTk):
     def draw_widget(self):
         CTkButton(self.root, width=50,height=15, text= "Добавить абонента", command=self.run_child_window).place(relx= 0.4, rely = 0.4)
 
+
     # метод запускает дочернее окно добавление абонента
     def run_child_window(self):
         windows.create_child_window(300, 500)
@@ -33,8 +34,6 @@ class Window (ctk.CTk):
 
 if __name__ == "__main__":
     windows = Window(800,600)
-
-
     windows.run()
 
 
