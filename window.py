@@ -1,7 +1,7 @@
 import customtkinter as ctk
 from customtkinter import CTkButton
 from add_abonent_window import AddAbonentWindow
-from add_abonent_window import AddAbonentWindow
+from add_abonent_window import AddAbonentWindow, SqliteDB
 
 
 class Window (ctk.CTk):
@@ -34,7 +34,9 @@ class Window (ctk.CTk):
 
 if __name__ == "__main__":
     windows = Window(800,600)
+    SqliteDB().create_table_abonent()
     windows.run()
+
 
 
 

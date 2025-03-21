@@ -20,9 +20,12 @@ def create_tables(conn):
     CREATE TABLE IF NOT EXISTS subscribers (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         full_name TEXT NOT NULL,
-        electricity BOOLEAN DEFAULT 0,
+        electricity REAL DEFAULT 0,
+        transformation_ratio INTEGER DEFAULT 1,
         gas BOOLEAN DEFAULT 0,
-        water BOOLEAN DEFAULT 0
+        water BOOLEAN DEFAULT 0,
+        wastewater BOOLEAN DEFAULT 0,
+        
     );"""
 
     sql_readings = """

@@ -1,7 +1,7 @@
 from tkinter import *
-
 import customtkinter as ctk
-from database import *
+import sqlite3
+from sqlite3 import Error
 
 
 
@@ -23,13 +23,14 @@ class AddAbonentWindow:
 
         self.var_entry = [
             (self.var_elect, "Электроэнергия "),
+            (self.transformation_ratio_var, "Коэффициент трансформации"),
             (self.water_var, "Вода"),
             (self.wastewater_var, "Водоотведение"),
             (self.gaz_var, "Газ"),
-            (self.transformation_ratio_var, "Коэффициент трансформации")
-        ]
+                    ]
         self.labels = {}
         self.entries = {}
+        self.name_entry = None
 
         self.draw_abonent_widget()
         self.grab_focus()
@@ -50,7 +51,8 @@ class AddAbonentWindow:
 
     def draw_abonent_widget(self):
         ctk.CTkLabel(master=self.root, text="Введите наименование организации абонента").pack()
-        name_entry =  ctk.CTkEntry(master=self.root, width=250).pack()
+        self.name_entry =  ctk.CTkEntry(master=self.root, width=250)
+        self.name_entry.pack()
         ctk.CTkLabel(master=self.root, text="Выберите услуги которыми пользуется абонент \nи внесите первоначальные показания:").pack()
 
 
@@ -63,11 +65,9 @@ class AddAbonentWindow:
 
         button_frame = self.creat_frame()
 
-        button_save = ctk.CTkButton(button_frame, text="Сохранить").pack(side=LEFT, padx=5, pady=5)
+        button_save = ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=5, pady=5)
         button_cancel = ctk.CTkButton(button_frame, text="Отмена").pack(side=LEFT, padx=5, pady=5)
         button_edit = ctk.CTkButton(button_frame, text="Редактировать").pack(side=RIGHT, padx=5, pady=5)
-
-
 
     def chek_chek_box(self, var, text):
 
@@ -88,6 +88,69 @@ class AddAbonentWindow:
                 if text in self.labels:
                     self.labels[text].destroy()
                     del self.labels[text]
+
+    def save_data(self): # Собираем данные из полей ввода
+        fulname = self.name_entry.get()
+        elect_value = self.entries.get("Электроэнергия", None)
+        transformation_ratio_value = self.entries.get("Коэффициент трансформации", None)
+        water_value = self.entries.get("Вода", None)
+        wastewater_value = self.entries.get("Водоотведение", None)
+        gaz_value = self.entries.get("Газ", None)
+
+        # Преобразуем значения в числа, если они существуют
+        elect_value = float(elect_value.get()) if elect_value else None
+        transformation_ratio_value = int(transformation_ratio_value.get()) if transformation_ratio_value else None
+        water_value = int(water_value.get()) if water_value else None
+        wastewater_value = int(wastewater_value.get()) if wastewater_value else None
+        gaz_value = int(gaz_value.get()) if gaz_value else None
+
+        # Сохраняем данные в базу данных
+        db = SqliteDB()
+        db.create_table_abonent()
+        db.insert_data((fulname, elect_value, transformation_ratio_value, water_value, wastewater_value, gaz_value))
+        db.close_connection()
+
+        # Закрываем окно после сохранения
+        self.root.destroy()
+
+class SqliteDB:
+    def __init__(self):
+        self.conn = sqlite3.connect('abonent.db')
+        print("База данных успешно открыта.")
+        self.cursor = self.conn.cursor()
+
+
+    def create_table_abonent(self):
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS abonents (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        fulname TEXT NOT NULL,
+        elect_value REAL,
+        transformation_ratio_value INTEGER,
+        water_value INTEGER,
+        wastewater_value INTEGER,
+        gaz_value INTEGER)''')
+
+
+    def insert_data(self, data):
+        self.cursor.execute(
+            'INSERT INTO abonents  (fulname, elect_value, transformation_ratio_value,water_value,wastewater_value,gaz_value) '
+            'VALUES (?, ?, ?, ?, ?,?)', data)
+        self.conn.commit() #сохраняем изменения
+
+
+    def fetch_data(self):
+        pass
+
+    def update_data(self, data):
+        pass
+
+    def delete_data(self, id):
+        pass
+
+    def close_connection(self):
+        if self.conn:
+            self.conn.close()
+            print("Соединение с базой данных закрыто.")
 
 
 
