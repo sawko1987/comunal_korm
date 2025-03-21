@@ -22,7 +22,7 @@ class AddAbonentWindow:
         self.transformation_ratio_var = BooleanVar(value=0)
 
         self.var_entry = [
-            (self.var_elect, "Электроэнергия "),
+            (self.var_elect, "Электроэнергия"),
             (self.transformation_ratio_var, "Коэффициент трансформации"),
             (self.water_var, "Вода"),
             (self.wastewater_var, "Водоотведение"),
@@ -124,7 +124,7 @@ class SqliteDB:
         self.cursor.execute('''CREATE TABLE IF NOT EXISTS abonents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         fulname TEXT NOT NULL,
-        elect_value REAL,
+        elect_value INTEGER,
         transformation_ratio_value INTEGER,
         water_value INTEGER,
         wastewater_value INTEGER,
