@@ -24,7 +24,7 @@ class Window (ctk.CTk):
 
     # метод запускает дочернее окно добавление абонента
     def run_child_window(self):
-        windows.create_child_window(300, 500)
+        windows.create_child_window(450, 650)
 
 
     # метод будет запускать основное окно
