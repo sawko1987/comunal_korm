@@ -19,7 +19,32 @@ class Window (ctk.CTk):
 
     # метод будет рисовать виджеты  и кнопки в основном окне
     def draw_widget(self):
-        CTkButton(self.root, width=50,height=15, text= "Добавить абонента", command=self.run_child_window).place(relx= 0.4, rely = 0.4)
+        # Создание контейнера с вкладками
+        self.tab_control = ctk.CTkTabview(self.root)
+        self.tab_control.pack(padx=20, pady=20,fill="both", expand=True)
+
+        # Добавление вкладок
+        self.tab_control.add("Абоненты")  # Вкладка 1
+        self.tab_control.add("Вкладка 2")  # Вкладка 2
+        self.tab_control.add("Вкладка 3")  # Вкладка 3
+
+        # Получаем фреймы для каждой вкладки
+        tab1 = self.tab_control.tab("Абоненты")
+        tab2 = self.tab_control.tab("Вкладка 2")
+        tab3 = self.tab_control.tab("Вкладка 3")
+
+        # Добавляем элементы на первую вкладку
+        lb1 = ctk.CTkLabel(tab1, text="Это вкладка 'Абоненты'")
+        lb1.pack(padx=20, pady=20)
+        # Добавляем элементы на вторую вкладку
+        lb2 = ctk.CTkLabel(tab2, text="Это вкладка 2")
+        lb2.pack(padx=20, pady=20)
+        # Добавляем элементы на вторую вкладку
+        lb3 = ctk.CTkLabel(tab3, text="Это вкладка 3")
+        lb3.pack(padx=20, pady=20)
+
+
+        CTkButton(tab1, width=50,height=15, text= "Добавить абонента", command=self.run_child_window).pack()
 
 
     # метод запускает дочернее окно добавление абонента

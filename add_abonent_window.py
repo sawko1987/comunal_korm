@@ -39,6 +39,7 @@ class AddAbonentWindow:
 
     # метод, который создает фокус на дочернем окне
     def grab_focus(self):
+
         self.root.grab_set() # фокус на окнe
         self.root.focus_set() # фокус на окнe
         self.root.wait_window() # ждем закрытия окна
@@ -112,10 +113,10 @@ class AddAbonentWindow:
         db.close_connection()
 
         # Закрываем окно после сохранения
+        self.show_error("Нет данных за выбранный период")
 
-        CTkMessagebox.messagebox(title='Уведомление!', text='Данные успешно сохранены', sound='on',
-                                 button_text='OK')
-
+        #CTkMessagebox.messagebox(title='Уведомление!', text='Данные успешно сохранены', sound='off',
+                                 # button_text='OK')
         self.root.destroy()
 
 class SqliteDB:
