@@ -2,6 +2,7 @@ from tkinter import *
 import customtkinter as ctk
 import sqlite3
 from sqlite3 import Error
+from CustomTkinterMessagebox import CTkMessagebox
 
 
 
@@ -111,6 +112,10 @@ class AddAbonentWindow:
         db.close_connection()
 
         # Закрываем окно после сохранения
+
+        CTkMessagebox.messagebox(title='Уведомление!', text='Данные успешно сохранены', sound='on',
+                                 button_text='OK')
+
         self.root.destroy()
 
 class SqliteDB:
