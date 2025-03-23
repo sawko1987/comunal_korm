@@ -1,9 +1,10 @@
+from pprint import pprint
 from tkinter import *
 import customtkinter as ctk
 import sqlite3
 from sqlite3 import Error
 from CustomTkinterMessagebox import CTkMessagebox
-
+from database import SqliteDB
 
 
 class AddAbonentWindow:
@@ -33,9 +34,10 @@ class AddAbonentWindow:
         self.entries = {}
         self.name_entry = None
 
+
+
         self.draw_abonent_widget()
         self.grab_focus()
-
 
     # метод, который создает фокус на дочернем окне
     def grab_focus(self):
@@ -43,7 +45,6 @@ class AddAbonentWindow:
         self.root.grab_set() # фокус на окнe
         self.root.focus_set() # фокус на окнe
         self.root.wait_window() # ждем закрытия окна
-
 
     def creat_frame(self):
         frame = ctk.CTkFrame(master=self.root, width=100, height=100)
@@ -55,10 +56,8 @@ class AddAbonentWindow:
         ctk.CTkLabel(master=self.root, text="Введите наименование организации абонента").pack()
         self.name_entry =  ctk.CTkEntry(master=self.root, width=250)
         self.name_entry.pack()
-        ctk.CTkLabel(master=self.root, text="Выберите услуги которыми пользуется абонент \nи внесите первоначальные показания:").pack()
-
-
-
+        ctk.CTkLabel(master=self.root,
+                     text="Выберите услуги которыми пользуется абонент \nи внесите первоначальные показания:").pack()
 
         # Создаем CheckBox и связываем их с переменными
         for var, text in self.var_entry:
@@ -71,8 +70,8 @@ class AddAbonentWindow:
         button_cancel = ctk.CTkButton(button_frame, text="Отмена").pack(side=LEFT, padx=5, pady=5)
         button_edit = ctk.CTkButton(button_frame, text="Редактировать").pack(side=RIGHT, padx=5, pady=5)
 
-    def chek_chek_box(self, var, text):
 
+    def chek_chek_box(self, var, text):
         if var.get():  # Если CheckBox отмечен
             if text not in self.entries:
 
@@ -113,61 +112,10 @@ class AddAbonentWindow:
         db.close_connection()
 
         # Закрываем окно после сохранения
-        self.show_error("Нет данных за выбранный период")
 
         #CTkMessagebox.messagebox(title='Уведомление!', text='Данные успешно сохранены', sound='off',
                                  # button_text='OK')
         self.root.destroy()
-
-class SqliteDB:
-    def __init__(self):
-        self.conn = sqlite3.connect('abonent.db')
-        print("База данных успешно открыта.")
-        self.cursor = self.conn.cursor()
-
-
-    def create_table_abonent(self):
-        self.cursor.execute('''CREATE TABLE IF NOT EXISTS abonents (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        fulname TEXT NOT NULL,
-        elect_value INTEGER,
-        transformation_ratio_value INTEGER,
-        water_value INTEGER,
-        wastewater_value INTEGER,
-        gaz_value INTEGER)''')
-
-
-    def insert_data(self, data):
-        self.cursor.execute(
-            'INSERT INTO abonents  (fulname, elect_value, transformation_ratio_value,water_value,wastewater_value,gaz_value) '
-            'VALUES (?, ?, ?, ?, ?,?)', data)
-        self.conn.commit() #сохраняем изменения
-
-
-    def fetch_data(self):
-        pass
-
-    def update_data(self, data):
-        pass
-
-    def delete_data(self, id):
-        pass
-
-    def close_connection(self):
-        if self.conn:
-            self.conn.close()
-            print("Соединение с базой данных закрыто.")
-
-
-
-
-
-
-
-
-
-
-
 
 
 

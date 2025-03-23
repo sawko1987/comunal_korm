@@ -1,58 +1,44 @@
 import sqlite3
 from sqlite3 import Error
 
+class SqliteDB:
+    def __init__(self):
+        self.conn = sqlite3.connect('abonent.db')
+        print("База данных успешно открыта.")
+        self.cursor = self.conn.cursor()
+        self.list_abonent = self.fetch_data()
 
-def create_connection():
-    """Создаём соединение с БД"""
-    conn = None
-    try:
-        conn = sqlite3.connect('utilities.db')
-        print(f"Подключение к SQLite успешно: sqlite3.version {sqlite3.version}")
-        return conn
-    except Error as e:
-        print(f"Ошибка подключения: {e}")
-    return conn
-
-
-def create_tables(conn):
-    """Создаём таблицы"""
-    sql_subscribers = """
-    CREATE TABLE IF NOT EXISTS subscribers (
+    def create_table_abonent(self):
+        self.cursor.execute('''CREATE TABLE IF NOT EXISTS abonents (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        full_name TEXT NOT NULL,
-        electricity REAL DEFAULT 0,
-        transformation_ratio INTEGER DEFAULT 1,
-        gas BOOLEAN DEFAULT 0,
-        water BOOLEAN DEFAULT 0,
-        wastewater BOOLEAN DEFAULT 0,
-        
-    );"""
+        fulname TEXT NOT NULL,
+        elect_value INTEGER,
+        transformation_ratio_value INTEGER,
+        water_value INTEGER,
+        wastewater_value INTEGER,
+        gaz_value INTEGER)''')
 
-    sql_readings = """
-    CREATE TABLE IF NOT EXISTS readings (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        subscriber_id INTEGER NOT NULL,
-        period DATE NOT NULL,  -- Формат: 'YYYY-MM'
-        electricity REAL DEFAULT 0,
-        coeff REAL DEFAULT 1,
-        gas REAL DEFAULT 0,
-        water REAL DEFAULT 0,
-        drainage REAL DEFAULT 0,
-        FOREIGN KEY (subscriber_id) REFERENCES subscribers (id)
-    );"""
-
-    try:
-        c = conn.cursor()
-        c.execute(sql_subscribers)
-        c.execute(sql_readings)
-        conn.commit()
-        print("Таблицы созданы успешно")
-    except Error as e:
-        print(f"Ошибка создания таблиц: {e}")
+    def insert_data(self, data):
+        self.cursor.execute(
+            'INSERT INTO abonents  (fulname, elect_value, transformation_ratio_value,water_value,wastewater_value,gaz_value) '
+            'VALUES (?, ?, ?, ?, ?,?)', data)
+        self.conn.commit() #сохраняем изменения
 
 
-if __name__ == "__main__":
-    conn = create_connection()
-    if conn:
-        create_tables(conn)
-        conn.close()
+    def fetch_data(self):
+        self.cursor.execute('SELECT * FROM abonents')
+        list_abonents = self.cursor.fetchall()
+        print(list_abonents)
+        return list_abonents
+
+
+    def update_data(self, data):
+        pass
+
+    def delete_data(self, id):
+        pass
+
+    def close_connection(self):
+        if self.conn:
+            self.conn.close()
+            print("Соединение с базой данных закрыто.")
