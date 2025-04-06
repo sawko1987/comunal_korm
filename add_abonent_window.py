@@ -1,13 +1,14 @@
 from pprint import pprint
 from tkinter import *
 import customtkinter as ctk
-import sqlite3
+#import sqlite
 from sqlite3 import Error
 from CustomTkinterMessagebox import CTkMessagebox
-from database import SqliteDB
+from users_db import SqliteDB
 
 
 class AddAbonentWindow:
+
     def __init__(self,parent, width, height, title="Учет коммунальных услуг АО_Корммаш", resizable=(False, False),
                  icon='image/korm.ico'):
         self.root = ctk.CTkToplevel(parent)
@@ -66,9 +67,9 @@ class AddAbonentWindow:
 
         button_frame = self.creat_frame()
 
-        button_save = ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=5, pady=5)
-        button_cancel = ctk.CTkButton(button_frame, text="Отмена").pack(side=LEFT, padx=5, pady=5)
-        button_edit = ctk.CTkButton(button_frame, text="Редактировать").pack(side=RIGHT, padx=5, pady=5)
+        button_save = ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=30, pady=5)
+        button_cancel = ctk.CTkButton(button_frame, text="Отмена", command=self.root.destroy).pack(side=LEFT, padx=30, pady=5)
+
 
 
     def chek_chek_box(self, var, text):
