@@ -70,6 +70,8 @@ class ConsumptionHistoryWindow:
         self.root.grab_set()
         self.root.focus_set()
 
+        self.transformation_ratio = 1  # Коэффициент трансформации по умолчанию
+
     def open_pdf(self):
         """Открывает созданный PDF файл в стандартном просмотрщике"""
         if self.last_pdf_path and os.path.exists(self.last_pdf_path):
@@ -112,18 +114,19 @@ class ConsumptionHistoryWindow:
                                         fetch_mode='one'):
                     raise Exception("Таблица abonents не существует")
 
-                # Получаем имя абонента
-                fulname_data = db.execute_query(
-                    "SELECT fulname FROM abonents WHERE id = ?",
+                # Получаем имя абонента и коэффициент трансформации
+                abonent_data = db.execute_query(
+                    "SELECT fulname, transformation_ratio_value FROM abonents WHERE id = ?",
                     (self.abonent_id,),
                     fetch_mode='one'
                 )
 
-                if not fulname_data:
+                if not abonent_data:
                     raise Exception(f"Абонент с ID {self.abonent_id} не найден")
 
-                fulname = fulname_data[0]
-                print(f"Найден абонент: {fulname}")
+                fulname = abonent_data[0]
+                self.transformation_ratio = abonent_data[1] if abonent_data[1] is not None else 1
+                print(f"Найден абонент: {fulname}, коэффициент трансформации: {self.transformation_ratio}")
 
                 # 3. Проверяем существование таблицы monthly_data
                 table_check = "SELECT name FROM sqlite_master WHERE type='table' AND name='monthly_data'"
@@ -131,6 +134,7 @@ class ConsumptionHistoryWindow:
                     self.table.delete("1.0", "end")
                     self.table.insert("end", "Ошибка: таблица monthly_data не существует\n")
                     return
+
 
                 # 4. Получаем данные за расчетный месяц и предыдущий месяц
                 # Для расчета потребления нам нужны показания на начало и конец периода
@@ -300,8 +304,12 @@ class ConsumptionHistoryWindow:
                     prev_value = float(start_month_data[4]) if start_month_data and len(start_month_data) > 4 and \
                                                                start_month_data[4] is not None else 0.0
                     curr_value = float(end_month_data[4])
-                    consumption = curr_value - prev_value
-                    result_text += f"Электроэнергия: {consumption:.2f} кВт·ч\n"
+                    consumption = (curr_value - prev_value) * self.transformation_ratio
+
+                    if self.transformation_ratio != 1:
+                        result_text += f"Электроэнергия: {consumption:.2f} кВт·ч (с учетом Кт={self.transformation_ratio})\n"
+                    else:
+                        result_text += f"Электроэнергия: {consumption:.2f} кВт·ч\n"
 
                 # Вода
                 if len(end_month_data) > 5 and end_month_data[5] is not None:
@@ -396,13 +404,16 @@ class ConsumptionHistoryWindow:
                     prev_value = float(start_month_data[4]) if start_month_data and len(start_month_data) > 4 and \
                                                                start_month_data[4] is not None else 0.0
                     curr_value = float(end_month_data[4])
-                    consumption = curr_value - prev_value
+                    consumption = (curr_value - prev_value) * self.transformation_ratio
 
                     registry_data["Услуга"].append("Электроэнергия")
                     registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
                     registry_data["Текущие показания"].append(f"{curr_value:.2f}")
                     registry_data["Потребление"].append(f"{consumption:.2f}")
-                    registry_data["Единица измерения"].append("кВт·ч")
+                    if self.transformation_ratio != 1:
+                        registry_data["Единица измерения"].append(f"кВт·ч (Кт={self.transformation_ratio})")
+                    else:
+                        registry_data["Единица измерения"].append("кВт·ч")
 
                 # Вода
                 if len(end_month_data) > 5 and end_month_data[5] is not None:
