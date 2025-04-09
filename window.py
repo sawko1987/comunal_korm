@@ -183,7 +183,7 @@ class Window (ctk.CTk):
             db = SqliteDB()
             abonent_id = db.get_abonent_id_by_name(selected_abonent_name)
             db.close_connection()
-            self.create_consumption_history_window(500, 650, abonent_id)
+            self.create_consumption_history_window(900, 1200, abonent_id)
 
     # метод запускает дочернее окно добавление абонента
     def run_child_window(self):
