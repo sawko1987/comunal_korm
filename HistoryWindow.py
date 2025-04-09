@@ -6,6 +6,7 @@ from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
 from datetime import datetime
+import subprocess
 
 
 class ConsumptionHistoryWindow:
@@ -19,6 +20,7 @@ class ConsumptionHistoryWindow:
             self.root.iconbitmap(icon)
 
         self.abonent_id = abonent_id
+        self.last_pdf_path = None  # Будем хранить путь к последнему созданному PDF
         print(f"Тип abonent_id: {type(self.abonent_id)}, значение: {self.abonent_id}")
 
         # Поля для выбора расчетного периода
@@ -52,6 +54,11 @@ class ConsumptionHistoryWindow:
                                                       state='disabled')
         self.generate_registry_button.pack(pady=10)
 
+        # Кнопка для открытия PDF (изначально скрыта)
+        self.open_pdf_button = ctk.CTkButton(self.root, text="Открыть PDF", command=self.open_pdf,
+                                             state='disabled', fg_color='green')
+        self.open_pdf_button.pack(pady=5)
+
         # Таблица для отображения данных
         self.table = ctk.CTkTextbox(self.root, width=550, height=200)
         self.table.pack(pady=10)
@@ -62,6 +69,21 @@ class ConsumptionHistoryWindow:
 
         self.root.grab_set()
         self.root.focus_set()
+
+    def open_pdf(self):
+        """Открывает созданный PDF файл в стандартном просмотрщике"""
+        if self.last_pdf_path and os.path.exists(self.last_pdf_path):
+            try:
+                if os.name == 'nt':  # Для Windows
+                    os.startfile(self.last_pdf_path)
+                elif os.name == 'posix':  # Для Mac и Linux
+                    subprocess.run(
+                        ['open', self.last_pdf_path] if sys.platform == 'darwin' else ['xdg-open', self.last_pdf_path])
+                self.calculation_result.insert("end", f"\nPDF файл открыт: {self.last_pdf_path}\n")
+            except Exception as e:
+                self.calculation_result.insert("end", f"\nОшибка при открытии PDF: {str(e)}\n")
+        else:
+            self.calculation_result.insert("end", "\nPDF файл не найден. Сначала создайте реестр.\n")
 
     def get_month_number(self, month_name):
         """Возвращает номер месяца по его названию"""
@@ -506,9 +528,19 @@ class ConsumptionHistoryWindow:
                 c.save()
                 print(f"✅ PDF-реестр сохранен в {pdf_file_path}")
 
+                # Сохраняем путь к PDF для последующего открытия
+                self.last_pdf_path = pdf_file_path
+
+                # Активируем кнопку открытия PDF
+                self.open_pdf_button.configure(state="normal", fg_color="green")
+
                 self.calculation_result.delete("1.0", "end")
                 self.calculation_result.insert("end",
                                                f"Реестр успешно создан:\nExcel: {xls_file_path}\nPDF: {pdf_file_path}\n")
+
+                # Добавляем информацию о возможности открыть PDF
+                self.calculation_result.insert("end", "\nНажмите кнопку 'Открыть PDF' для просмотра файла.\n")
+
             except Exception as e:
                 self.calculation_result.delete("1.0", "end")
                 self.calculation_result.insert("end", f"Ошибка создания реестра: {str(e)}\n")
