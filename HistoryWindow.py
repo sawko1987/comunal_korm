@@ -5,9 +5,12 @@ import pandas as pd
 from reportlab.lib.pagesizes import letter
 from reportlab.pdfgen import canvas
 import os
+from datetime import datetime
+
 
 class ConsumptionHistoryWindow:
-    def __init__(self, parent, width, height, abonent_id, title="Учет коммунальных услуг АО_Корммаш", resizable=(False, False), icon='image/korm.ico'):
+    def __init__(self, parent, width, height, abonent_id, title="Учет коммунальных услуг АО_Корммаш",
+                 resizable=(False, False), icon='image/korm.ico'):
         self.root = ctk.CTkToplevel(parent)
         self.root.title(title)
         self.root.geometry(f"{width}x{height}")
@@ -18,37 +21,35 @@ class ConsumptionHistoryWindow:
         self.abonent_id = abonent_id
         print(f"Тип abonent_id: {type(self.abonent_id)}, значение: {self.abonent_id}")
 
-        # Поля для выбора периода
-        self.start_month_label = ctk.CTkLabel(self.root, text="Начальный месяц:")
-        self.start_month_label.pack(pady=5)
-        self.start_month_entry = ctk.CTkEntry(self.root)
-        self.start_month_entry.pack(pady=5)
+        # Поля для выбора расчетного периода
+        self.month_label = ctk.CTkLabel(self.root, text="Расчетный месяц:")
+        self.month_label.pack(pady=5)
 
-        self.start_year_label = ctk.CTkLabel(self.root, text="Начальный год:")
-        self.start_year_label.pack(pady=5)
-        self.start_year_entry = ctk.CTkEntry(self.root)
-        self.start_year_entry.pack(pady=5)
+        # Выпадающий список для месяцев
+        self.months = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+                       "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+        self.month_var = ctk.StringVar(value=self.months[datetime.now().month - 1])
+        self.month_combobox = ctk.CTkComboBox(self.root, values=self.months, variable=self.month_var)
+        self.month_combobox.pack(pady=5)
 
-        self.end_month_label = ctk.CTkLabel(self.root, text="Конечный месяц:")
-        self.end_month_label.pack(pady=5)
-        self.end_month_entry = ctk.CTkEntry(self.root)
-        self.end_month_entry.pack(pady=5)
-
-        self.end_year_label = ctk.CTkLabel(self.root, text="Конечный год:")
-        self.end_year_label.pack(pady=5)
-        self.end_year_entry = ctk.CTkEntry(self.root)
-        self.end_year_entry.pack(pady=5)
+        self.year_label = ctk.CTkLabel(self.root, text="Год:")
+        self.year_label.pack(pady=5)
+        self.year_entry = ctk.CTkEntry(self.root)
+        self.year_entry.pack(pady=5)
+        self.year_entry.insert(0, str(datetime.now().year))  # Текущий год по умолчанию
 
         # Кнопка для загрузки данных
         self.load_button = ctk.CTkButton(self.root, text="Загрузить данные", command=self.load_data)
         self.load_button.pack(pady=20)
 
         # Кнопка для расчета данных
-        self.calc_button = ctk.CTkButton(self.root, text="Рассчитать потребление", command=self.calculate_consumption, state='disabled')
+        self.calc_button = ctk.CTkButton(self.root, text="Рассчитать потребление", command=self.calculate_consumption,
+                                         state='disabled')
         self.calc_button.pack(pady=10)
 
         # Кнопка для генерации реестра
-        self.generate_registry_button = ctk.CTkButton(self.root, text="Создать реестр", command=self.generate_registry, state='disabled')
+        self.generate_registry_button = ctk.CTkButton(self.root, text="Создать реестр", command=self.generate_registry,
+                                                      state='disabled')
         self.generate_registry_button.pack(pady=10)
 
         # Таблица для отображения данных
@@ -62,37 +63,23 @@ class ConsumptionHistoryWindow:
         self.root.grab_set()
         self.root.focus_set()
 
-        # Устанавливаем фокус на окно
-        self.root.grab_set()
-        self.root.focus_set()
-
-        # Добавляем placeholder'ы (подсказки)
-        self.start_month_entry.insert(0, "1-12")
-        self.start_year_entry.insert(0, "2025")
-        self.end_month_entry.insert(0, "1-12")
-        self.end_year_entry.insert(0, "2025")
-
-        # Меняем цвет кнопки "Рассчитать" (чтобы она выглядела неактивной)
-        self.calc_button.configure(fg_color="gray")
+    def get_month_number(self, month_name):
+        """Возвращает номер месяца по его названию"""
+        return self.months.index(month_name) + 1
 
     def load_data(self):
-        """Загружает данные о потреблении за указанный период и отображает их в интерфейсе"""
+        """Загружает данные о потреблении за указанный расчетный месяц и отображает их в интерфейсе"""
         try:
             # 1. Получаем и валидируем параметры периода
-            start_month = int(self.start_month_entry.get())
-            start_year = int(self.start_year_entry.get())
-            end_month = int(self.end_month_entry.get())
-            end_year = int(self.end_year_entry.get())
+            month_name = self.month_var.get()
+            month = self.get_month_number(month_name)
+            year = int(self.year_entry.get())
 
             # Валидация введенных значений
-            if not (1 <= start_month <= 12) or not (1 <= end_month <= 12):
-                raise ValueError("Месяц должен быть от 1 до 12")
-            if start_year < 2000 or end_year < 2000:
-                raise ValueError("Год должен быть не менее 2000")
-            if (start_year > end_year) or (start_year == end_year and start_month > end_month):
-                raise ValueError("Начальная дата должна быть раньше конечной")
+            if year < 2000 or year > datetime.now().year + 1:
+                raise ValueError("Год должен быть в диапазоне 2000-" + str(datetime.now().year + 1))
 
-            print(f"Параметры запроса: abonent_id={self.abonent_id}, период: {start_month}/{start_year}-{end_month}/{end_year}")
+            print(f"Параметры запроса: abonent_id={self.abonent_id}, месяц: {month}/{year}")
 
             # 2. Подключаемся к базе данных
             db = SqliteDB()
@@ -115,6 +102,7 @@ class ConsumptionHistoryWindow:
 
                 fulname = fulname_data[0]
                 print(f"Найден абонент: {fulname}")
+
                 # 3. Проверяем существование таблицы monthly_data
                 table_check = "SELECT name FROM sqlite_master WHERE type='table' AND name='monthly_data'"
                 if not db.execute_query(table_check, fetch_mode='one'):
@@ -122,40 +110,100 @@ class ConsumptionHistoryWindow:
                     self.table.insert("end", "Ошибка: таблица monthly_data не существует\n")
                     return
 
-                # 4. Проверяем наличие любых данных для абонента
-                test_query = "SELECT 1 FROM monthly_data WHERE abonent_id = ? LIMIT 1"
-                test_data = db.execute_query(test_query, (self.abonent_id,), fetch_mode='one')
-                print(f"Тестовые данные (любые): {test_data}")
+                # 4. Получаем данные за расчетный месяц и предыдущий месяц
+                # Для расчета потребления нам нужны показания на начало и конец периода
 
-                if not test_data:
-                    self.table.delete("1.0", "end")
-                    self.table.insert("end", "Ошибка: нет никаких данных для этого абонента\n")
-                    return
+                # Текущий расчетный месяц (конец периода)
+                end_month_data = db.execute_query(
+                    "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
+                    (self.abonent_id, month, year),
+                    fetch_mode='one'
+                )
 
-                # 5. Запрашиваем данные за указанный период
-                data = db.get_consumption_data(self.abonent_id, start_month, start_year, end_month, end_year)
-                print(f"Данные за период: {data}")
+                # Предыдущий месяц (начало периода)
+                prev_month = month - 1 if month > 1 else 12
+                prev_year = year if month > 1 else year - 1
+
+                start_month_data = db.execute_query(
+                    "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
+                    (self.abonent_id, prev_month, prev_year),
+                    fetch_mode='one'
+                )
 
                 self.table.delete("1.0", "end")
 
-                if not data:
-                    self.table.insert("end", "Нет данных за указанный период (но данные для абонента существуют)\n")
+                if not end_month_data:
+                    self.table.insert("end", f"Нет данных за расчетный месяц {month}/{year}\n")
                     return
 
-                # 6. Форматируем и выводим данные
-                headers = ["Месяц/Год", "Электроэнергия (кВт·ч)", "Вода (м³)", "Сточные воды (м³)", "Газ (м³)"]
+                if not start_month_data:
+                    self.table.insert("end", f"Нет данных за предыдущий месяц {prev_month}/{prev_year}\n")
+                    self.table.insert("end", "Расчет будет выполнен от нуля\n")
+
+                # Формируем заголовки таблицы
+                headers = ["Параметр", "Предыдущий месяц", "Текущий месяц", "Потребление"]
                 self.table.insert("end", "\t".join(headers) + "\n")
                 self.table.insert("end", "-" * 70 + "\n")
 
-                for row in data:
-                    month_year = f"{row[2]}/{row[3]}"
-                    electricity = f"{row[4] or 'нет'}"
-                    water = f"{row[5] or 'нет'}"
-                    wastewater = f"{row[6] or 'нет'}"
-                    gas = f"{row[7] or 'нет'}" if len(row) > 7 else 'нет'
+                # Электроэнергия
+                if len(end_month_data) > 4 and end_month_data[4] is not None:
+                    prev_value = float(start_month_data[4]) if start_month_data and len(start_month_data) > 4 and \
+                                                               start_month_data[4] is not None else 0.0
+                    curr_value = float(end_month_data[4])
+                    consumption = curr_value - prev_value
 
-                    values = [month_year, electricity, water, wastewater, gas]
-                    self.table.insert("end", "\t".join(values) + "\n")
+                    row = [
+                        "Электроэнергия (кВт·ч)",
+                        f"{prev_value:.2f}" if start_month_data else "нет данных",
+                        f"{curr_value:.2f}",
+                        f"{consumption:.2f}"
+                    ]
+                    self.table.insert("end", "\t".join(row) + "\n")
+
+                # Вода
+                if len(end_month_data) > 5 and end_month_data[5] is not None:
+                    prev_value = float(start_month_data[5]) if start_month_data and len(start_month_data) > 5 and \
+                                                               start_month_data[5] is not None else 0.0
+                    curr_value = float(end_month_data[5])
+                    consumption = curr_value - prev_value
+
+                    row = [
+                        "Вода (м³)",
+                        f"{prev_value:.2f}" if start_month_data else "нет данных",
+                        f"{curr_value:.2f}",
+                        f"{consumption:.2f}"
+                    ]
+                    self.table.insert("end", "\t".join(row) + "\n")
+
+                # Сточные воды
+                if len(end_month_data) > 6 and end_month_data[6] is not None:
+                    prev_value = float(start_month_data[6]) if start_month_data and len(start_month_data) > 6 and \
+                                                               start_month_data[6] is not None else 0.0
+                    curr_value = float(end_month_data[6])
+                    consumption = curr_value - prev_value
+
+                    row = [
+                        "Сточные воды (м³)",
+                        f"{prev_value:.2f}" if start_month_data else "нет данных",
+                        f"{curr_value:.2f}",
+                        f"{consumption:.2f}"
+                    ]
+                    self.table.insert("end", "\t".join(row) + "\n")
+
+                # Газ
+                if len(end_month_data) > 7 and end_month_data[7] is not None:
+                    prev_value = float(start_month_data[7]) if start_month_data and len(start_month_data) > 7 and \
+                                                               start_month_data[7] is not None else 0.0
+                    curr_value = float(end_month_data[7])
+                    consumption = curr_value - prev_value
+
+                    row = [
+                        "Газ (м³)",
+                        f"{prev_value:.2f}" if start_month_data else "нет данных",
+                        f"{curr_value:.2f}",
+                        f"{consumption:.2f}"
+                    ]
+                    self.table.insert("end", "\t".join(row) + "\n")
 
                 # Активируем кнопки после успешной загрузки данных
                 self.calc_button.configure(state="normal", fg_color="#1f6aa5")
@@ -178,96 +226,98 @@ class ConsumptionHistoryWindow:
             traceback.print_exc()
 
     def calculate_consumption(self):
-        """Вычисляет общее потребление ресурсов за указанный период"""
-        print("⚡ Запущен calculate_consumption()")  # Отладочный вывод
+        """Вычисляет общее потребление ресурсов за расчетный месяц"""
         try:
-            # Проверяем, что все поля заполнены
-            if not all([
-                self.start_month_entry.get(),
-                self.start_year_entry.get(),
-                self.end_month_entry.get(),
-                self.end_year_entry.get()
-            ]):
-                self.calculation_result.delete("1.0", "end")
-                self.calculation_result.insert("end", "❌ Ошибка: заполните все поля периода!\n")
-                return
-
-            # Проверяем, что данные загружены (если таблица пуста)
-            if not self.table.get("1.0", "end-1c"):  # Если текстовое поле пустое
+            # Проверяем, что данные загружены
+            if not self.table.get("1.0", "end-1c"):
                 self.calculation_result.delete("1.0", "end")
                 self.calculation_result.insert("end", "❌ Ошибка: сначала загрузите данные!\n")
                 return
 
-            start_month = int(self.start_month_entry.get())
-            start_year = int(self.start_year_entry.get())
-            end_month = int(self.end_month_entry.get())
-            end_year = int(self.end_year_entry.get())
+            month_name = self.month_var.get()
+            month = self.get_month_number(month_name)
+            year = int(self.year_entry.get())
 
             db = SqliteDB()
             try:
-                # Получаем данные за период
-                data = db.get_consumption_data(self.abonent_id, start_month, start_year, end_month, end_year)
-                print(f"📊 Данные из БД: {data}")  # Что пришло из БД?
+                # Получаем имя абонента
+                fulname = db.execute_query(
+                    "SELECT fulname FROM abonents WHERE id = ?",
+                    (self.abonent_id,),
+                    fetch_mode='one'
+                )[0]
 
-                if not data:
-                    print("❌ Нет данных для расчёта!")
-                    self.calculation_result.delete("1.0", "end")
-                    self.calculation_result.insert("end", "Нет данных для расчета\n")
-                    return
-
-                # Получаем коэффициент трансформации (если есть)
-                transform_coeff = 1.0
-
-                # Рассчитываем суммы по категориям
-                total_electricity = 0.0
-                total_water = 0.0
-                total_wastewater = 0.0
-                total_gas = 0.0
-
-                for row in data:
-                    if row[4]:  # Электроэнергия
-                        total_electricity += float(row[4]) * transform_coeff
-                    if row[5]:  # Вода
-                        total_water += float(row[5])
-                    if row[6]:  # Сточные воды
-                        total_wastewater += float(row[6])
-                    if len(row) > 7 and row[7]:  # Газ
-                        total_gas += float(row[7])
-
-                # Выводим результаты
-                print(f"🔢 Результаты: Электричество={total_electricity}, Вода={total_water}")  # Проверяем числа
-                self.calculation_result.delete("1.0", "end")
-                result_text = (
-                    f"Общее потребление за период {start_month}/{start_year}-{end_month}/{end_year}:\n"
-                    f"Электроэнергия: {total_electricity:.2f} кВт·ч "
-                    f"{'(с учетом коэффициента трансформации)' if transform_coeff != 1.0 else ''}\n"
-                    f"Вода: {total_water:.2f} м³\n"
-                    f"Сточные воды: {total_wastewater:.2f} м³\n"
-                    f"Газ: {total_gas:.2f} м³\n"
+                # Получаем данные за расчетный месяц и предыдущий месяц
+                end_month_data = db.execute_query(
+                    "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
+                    (self.abonent_id, month, year),
+                    fetch_mode='one'
                 )
 
-                # Очистка и вывод
+                # Предыдущий месяц (начало периода)
+                prev_month = month - 1 if month > 1 else 12
+                prev_year = year if month > 1 else year - 1
+
+                start_month_data = db.execute_query(
+                    "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
+                    (self.abonent_id, prev_month, prev_year),
+                    fetch_mode='one'
+                )
+
+                if not end_month_data:
+                    self.calculation_result.delete("1.0", "end")
+                    self.calculation_result.insert("end", f"Нет данных за расчетный месяц {month}/{year}\n")
+                    return
+
+                # Рассчитываем потребление по каждой услуге
+                result_text = f"Расчет потребления за {month_name} {year} года\n"
+                result_text += f"Абонент: {fulname}\n\n"
+
+                # Электроэнергия
+                if len(end_month_data) > 4 and end_month_data[4] is not None:
+                    prev_value = float(start_month_data[4]) if start_month_data and len(start_month_data) > 4 and \
+                                                               start_month_data[4] is not None else 0.0
+                    curr_value = float(end_month_data[4])
+                    consumption = curr_value - prev_value
+                    result_text += f"Электроэнергия: {consumption:.2f} кВт·ч\n"
+
+                # Вода
+                if len(end_month_data) > 5 and end_month_data[5] is not None:
+                    prev_value = float(start_month_data[5]) if start_month_data and len(start_month_data) > 5 and \
+                                                               start_month_data[5] is not None else 0.0
+                    curr_value = float(end_month_data[5])
+                    consumption = curr_value - prev_value
+                    result_text += f"Вода: {consumption:.2f} м³\n"
+
+                # Сточные воды
+                if len(end_month_data) > 6 and end_month_data[6] is not None:
+                    prev_value = float(start_month_data[6]) if start_month_data and len(start_month_data) > 6 and \
+                                                               start_month_data[6] is not None else 0.0
+                    curr_value = float(end_month_data[6])
+                    consumption = curr_value - prev_value
+                    result_text += f"Сточные воды: {consumption:.2f} м³\n"
+
+                # Газ
+                if len(end_month_data) > 7 and end_month_data[7] is not None:
+                    prev_value = float(start_month_data[7]) if start_month_data and len(start_month_data) > 7 and \
+                                                               start_month_data[7] is not None else 0.0
+                    curr_value = float(end_month_data[7])
+                    consumption = curr_value - prev_value
+                    result_text += f"Газ: {consumption:.2f} м³\n"
+
+                # Выводим результат
                 self.calculation_result.delete("1.0", "end")
                 self.calculation_result.insert("end", result_text)
-                self.calculation_result.see("end")  # Прокрутка к новому тексту
-                self.calculation_result.update()  # Принудительное обновление
-
-                print(f"✅ Результат в виджете: {self.calculation_result.get('1.0', 'end-1c')}")
-
-                print("✅ Расчёт завершён и выведен на экран")
 
             finally:
                 db.close_connection()
 
-        except ValueError as ve:
-            self.calculation_result.delete("1.0", "end")
-            self.calculation_result.insert("end", f"Ошибка ввода: {str(ve)}\n")
         except Exception as e:
             self.calculation_result.delete("1.0", "end")
             self.calculation_result.insert("end", f"Ошибка расчета: {str(e)}\n")
 
     def generate_registry(self):
-        """Генерирует реестр с показаниями и потреблением"""
+        """Генерирует реестр с показаниями и потреблением за расчетный месяц"""
         try:
             # Проверяем, что данные загружены и рассчитаны
             if not self.table.get("1.0", "end-1c") or not self.calculation_result.get("1.0", "end-1c"):
@@ -275,60 +325,39 @@ class ConsumptionHistoryWindow:
                 self.calculation_result.insert("end", "❌ Ошибка: сначала загрузите и рассчитайте данные!\n")
                 return
 
-            start_month = int(self.start_month_entry.get())
-            start_year = int(self.start_year_entry.get())
-            end_month = int(self.end_month_entry.get())
-            end_year = int(self.end_year_entry.get())
+            month_name = self.month_var.get()
+            month = self.get_month_number(month_name)
+            year = int(self.year_entry.get())
 
             db = SqliteDB()
             try:
-                # 1. Проверяем существование таблицы abonents
-                table_check = "SELECT name FROM sqlite_master WHERE type='table' AND name='abonents'"
-                if not db.execute_query(table_check, fetch_mode='one'):
+                # Получаем имя абонента
+                fulname = db.execute_query(
+                    "SELECT fulname FROM abonents WHERE id = ?",
+                    (self.abonent_id,),
+                    fetch_mode='one'
+                )[0]
+
+                # Получаем данные за расчетный месяц и предыдущий месяц
+                end_month_data = db.execute_query(
+                    "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
+                    (self.abonent_id, month, year),
+                    fetch_mode='one'
+                )
+
+                prev_month = month - 1 if month > 1 else 12
+                prev_year = year if month > 1 else year - 1
+
+                start_month_data = db.execute_query(
+                    "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
+                    (self.abonent_id, prev_month, prev_year),
+                    fetch_mode='one'
+                )
+
+                if not end_month_data:
                     self.calculation_result.delete("1.0", "end")
-                    self.calculation_result.insert("end", "Ошибка: таблица abonents не существует\n")
+                    self.calculation_result.insert("end", f"Нет данных за расчетный месяц {month}/{year}\n")
                     return
-
-                # 2. Получаем полное имя абонента с дополнительной проверкой
-                fulname_query = "SELECT fulname FROM abonents WHERE id = ?"
-                fulname_data = db.execute_query(fulname_query, (self.abonent_id,), fetch_mode='one')
-
-                if not fulname_data:
-                    # Проверяем, есть ли вообще какие-либо абоненты в таблице
-                    any_abonent_check = "SELECT 1 FROM abonents LIMIT 1"
-                    if not db.execute_query(any_abonent_check, fetch_mode='one'):
-                        self.calculation_result.delete("1.0", "end")
-                        self.calculation_result.insert("end", "Ошибка: таблица abonents пуста\n")
-                    else:
-                        self.calculation_result.delete("1.0", "end")
-                        self.calculation_result.insert("end", f"Ошибка: абонент с ID {self.abonent_id} не найден\n")
-                    return
-
-                fulname = fulname_data[0]
-                print(f"Получено имя абонента: {fulname}")  # Отладочный вывод
-
-                # Получаем данные за период
-                data = db.get_consumption_data(self.abonent_id, start_month, start_year, end_month, end_year)
-                print(f"📊 Данные из БД для реестра: {data}")
-
-                if not data:
-                    print("❌ Нет данных для создания реестра!")
-                    self.calculation_result.delete("1.0", "end")
-                    self.calculation_result.insert("end", "Нет данных для создания реестра\n")
-                    return
-
-                # Получаем полное имя абонента
-                fulname_query = "SELECT fulname FROM abonents WHERE id = ?"
-                fulname = db.execute_query(fulname_query, (self.abonent_id,), fetch_mode='one')
-                if not fulname:
-                    self.calculation_result.delete("1.0", "end")
-                    self.calculation_result.insert("end", "Ошибка: не удалось получить имя абонента\n")
-                    return
-
-                fulname = fulname[0]
-
-                # Получаем коэффициент трансформации (если есть)
-                transform_coeff = 1.0  # Можно получить из БД или настроек
 
                 # Создаем структуру данных для реестра
                 registry_data = {
@@ -336,71 +365,70 @@ class ConsumptionHistoryWindow:
                     "Предыдущие показания": [],
                     "Текущие показания": [],
                     "Потребление": [],
-                    "Коэффициент трансформации": []
+                    "Единица измерения": []
                 }
 
                 # Обрабатываем данные для каждой услуги
-                for row in data:
-                    month_year = f"{row[2]}/{row[3]}"
+                # Электроэнергия
+                if len(end_month_data) > 4 and end_month_data[4] is not None:
+                    prev_value = float(start_month_data[4]) if start_month_data and len(start_month_data) > 4 and \
+                                                               start_month_data[4] is not None else 0.0
+                    curr_value = float(end_month_data[4])
+                    consumption = curr_value - prev_value
 
-                    # Электроэнергия
-                    if len(row) > 4 and row[4] is not None:
-                        prev_value = float(row[8]) if len(row) > 8 and row[8] is not None else 0.0
-                        curr_value = float(row[4])
-                        consumption = (curr_value - prev_value) * transform_coeff
+                    registry_data["Услуга"].append("Электроэнергия")
+                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
+                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
+                    registry_data["Потребление"].append(f"{consumption:.2f}")
+                    registry_data["Единица измерения"].append("кВт·ч")
 
-                        registry_data["Услуга"].append(f"Электроэнергия (кВт·ч) {month_year}")
-                        registry_data["Предыдущие показания"].append(prev_value)
-                        registry_data["Текущие показания"].append(curr_value)
-                        registry_data["Потребление"].append(round(consumption, 2))
-                        registry_data["Коэффициент трансформации"].append(transform_coeff)
+                # Вода
+                if len(end_month_data) > 5 and end_month_data[5] is not None:
+                    prev_value = float(start_month_data[5]) if start_month_data and len(start_month_data) > 5 and \
+                                                               start_month_data[5] is not None else 0.0
+                    curr_value = float(end_month_data[5])
+                    consumption = curr_value - prev_value
 
-                    # Вода
-                    if len(row) > 5 and row[5] is not None:
-                        prev_value = float(row[9]) if len(row) > 9 and row[9] is not None else 0.0
-                        curr_value = float(row[5])
-                        consumption = curr_value - prev_value
+                    registry_data["Услуга"].append("Вода")
+                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
+                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
+                    registry_data["Потребление"].append(f"{consumption:.2f}")
+                    registry_data["Единица измерения"].append("м³")
 
-                        registry_data["Услуга"].append(f"Вода (м³) {month_year}")
-                        registry_data["Предыдущие показания"].append(prev_value)
-                        registry_data["Текущие показания"].append(curr_value)
-                        registry_data["Потребление"].append(round(consumption, 2))
-                        registry_data["Коэффициент трансформации"].append("")
+                # Сточные воды
+                if len(end_month_data) > 6 and end_month_data[6] is not None:
+                    prev_value = float(start_month_data[6]) if start_month_data and len(start_month_data) > 6 and \
+                                                               start_month_data[6] is not None else 0.0
+                    curr_value = float(end_month_data[6])
+                    consumption = curr_value - prev_value
 
-                    # Сточные воды
-                    if len(row) > 6 and row[6] is not None:
-                        prev_value = float(row[10]) if len(row) > 10 and row[10] is not None else 0.0
-                        curr_value = float(row[6])
-                        consumption = curr_value - prev_value
+                    registry_data["Услуга"].append("Сточные воды")
+                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
+                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
+                    registry_data["Потребление"].append(f"{consumption:.2f}")
+                    registry_data["Единица измерения"].append("м³")
 
-                        registry_data["Услуга"].append(f"Сточные воды (м³) {month_year}")
-                        registry_data["Предыдущие показания"].append(prev_value)
-                        registry_data["Текущие показания"].append(curr_value)
-                        registry_data["Потребление"].append(round(consumption, 2))
-                        registry_data["Коэффициент трансформации"].append("")
+                # Газ
+                if len(end_month_data) > 7 and end_month_data[7] is not None:
+                    prev_value = float(start_month_data[7]) if start_month_data and len(start_month_data) > 7 and \
+                                                               start_month_data[7] is not None else 0.0
+                    curr_value = float(end_month_data[7])
+                    consumption = curr_value - prev_value
 
-                    # Газ
-                    if len(row) > 7 and row[7] is not None:
-                        prev_value = float(row[11]) if len(row) > 11 and row[11] is not None else 0.0
-                        curr_value = float(row[7])
-                        consumption = curr_value - prev_value
-
-                        registry_data["Услуга"].append(f"Газ (м³) {month_year}")
-                        registry_data["Предыдущие показания"].append(prev_value)
-                        registry_data["Текущие показания"].append(curr_value)
-                        registry_data["Потребление"].append(round(consumption, 2))
-                        registry_data["Коэффициент трансформации"].append("")
+                    registry_data["Услуга"].append("Газ")
+                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
+                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
+                    registry_data["Потребление"].append(f"{consumption:.2f}")
+                    registry_data["Единица измерения"].append("м³")
 
                 df = pd.DataFrame(registry_data)
 
                 # Создаем папку для реестров
-                org_name = f"{fulname}"  # Замените на реальное название
                 folder_path = r"C:\Реестры по абонентам"
                 os.makedirs(folder_path, exist_ok=True)
 
                 # Формируем название файла
-                period_str = f"{start_month}_{start_year}-{end_month}_{end_year}"
-                file_prefix = f"{org_name}_{period_str}"
+                file_prefix = f"{fulname}_{month_name}_{year}"
 
                 # Сохраняем в Excel
                 xls_file_path = os.path.join(folder_path, f"{file_prefix}.xlsx")
@@ -411,14 +439,14 @@ class ConsumptionHistoryWindow:
                     worksheet = writer.sheets['Реестр']
 
                     # Устанавливаем ширину столбцов
-                    worksheet.column_dimensions['A'].width = 30
+                    worksheet.column_dimensions['A'].width = 20
                     worksheet.column_dimensions['B'].width = 20
                     worksheet.column_dimensions['C'].width = 20
                     worksheet.column_dimensions['D'].width = 15
-                    worksheet.column_dimensions['E'].width = 25
+                    worksheet.column_dimensions['E'].width = 20
 
                     # Добавляем заголовок
-                    worksheet['F1'] = f"Реестр показаний за период {start_month}/{start_year}-{end_month}/{end_year}"
+                    worksheet['F1'] = f"Реестр показаний за {month_name} {year} года"
                     worksheet['F2'] = f"Абонент: {fulname}"
                     worksheet['F4'] = "Подписи:"
                     worksheet['F5'] = "Бухгалтер: ____________________"
@@ -443,27 +471,24 @@ class ConsumptionHistoryWindow:
 
                 # Заголовок
                 c.setFont(font_name, 14)
-                c.drawString(100, height - 100,
-                             f"Реестр показаний за период {start_month}/{start_year}-{end_month}/{end_year}")
+                c.drawString(100, height - 100, f"Реестр показаний за {month_name} {year} года")
                 c.setFont(font_name, 12)
                 c.drawString(100, height - 120, f"Абонент: {fulname}")
 
                 # Таблица данных
                 c.setFont(font_name, 10)
                 y = height - 160
-                c.drawString(100, y, "Услуга")
-                c.drawString(250, y, "Пред.пок.")
-                c.drawString(350, y, "Тек.пок.")
-                c.drawString(450, y, "Потребление")
-                c.drawString(550, y, "Коэф.транс.")
+                headers = ["Услуга", "Пред.пок.", "Тек.пок.", "Потребление", "Ед.изм."]
+                for i, header in enumerate(headers):
+                    c.drawString(100 + i * 100, y, header)
                 y -= 20
 
                 for index, row in df.iterrows():
-                    c.drawString(100, y, str(row["Услуга"]))
-                    c.drawString(250, y, str(row["Предыдущие показания"]))
-                    c.drawString(350, y, str(row["Текущие показания"]))
-                    c.drawString(450, y, str(row["Потребление"]))
-                    c.drawString(550, y, str(row["Коэффициент трансформации"]))
+                    values = [row["Услуга"], row["Предыдущие показания"],
+                              row["Текущие показания"], row["Потребление"],
+                              row["Единица измерения"]]
+                    for i, value in enumerate(values):
+                        c.drawString(100 + i * 100, y, str(value))
                     y -= 15
 
                     if y < 100:  # Если место заканчивается, создаем новую страницу
@@ -484,22 +509,15 @@ class ConsumptionHistoryWindow:
                 self.calculation_result.delete("1.0", "end")
                 self.calculation_result.insert("end",
                                                f"Реестр успешно создан:\nExcel: {xls_file_path}\nPDF: {pdf_file_path}\n")
-            except sqlite3.Error as e:
+            except Exception as e:
                 self.calculation_result.delete("1.0", "end")
-                self.calculation_result.insert("end", f"Ошибка базы данных: {str(e)}\n")
+                self.calculation_result.insert("end", f"Ошибка создания реестра: {str(e)}\n")
                 import traceback
                 traceback.print_exc()
 
             finally:
                 db.close_connection()
 
-        except ValueError as ve:
-            self.calculation_result.delete("1.0", "end")
-            self.calculation_result.insert("end", f"Ошибка ввода: {str(ve)}\n")
         except Exception as e:
             self.calculation_result.delete("1.0", "end")
-            self.calculation_result.insert("end", f"Ошибка создания реестра: {str(e)}\n")
-            import traceback
-            traceback.print_exc()  # Печатаем полную трассировку ошибки
-
-
+            self.calculation_result.insert("end", f"Ошибка: {str(e)}\n")
