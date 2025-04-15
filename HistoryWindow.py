@@ -54,10 +54,11 @@ class ConsumptionHistoryWindow:
                                                       state='disabled')
         self.generate_registry_button.pack(pady=10)
 
-        # Кнопка для открытия PDF (изначально скрыта)
-        self.open_pdf_button = ctk.CTkButton(self.root, text="Открыть PDF", command=self.open_pdf,
-                                             state='disabled', fg_color='green')
-        self.open_pdf_button.pack(pady=5)
+        # Кнопка для открытия Word (изначально скрыта)
+        self.open_word_button = ctk.CTkButton(self.root, text="Открыть Word", command=self.open_word,
+                                              state='disabled', fg_color='green')
+        self.open_word_button.pack(pady=5)
+
 
         # Таблица для отображения данных
         self.table = ctk.CTkTextbox(self.root, width=550, height=200)
@@ -72,20 +73,20 @@ class ConsumptionHistoryWindow:
 
         self.transformation_ratio = 1  # Коэффициент трансформации по умолчанию
 
-    def open_pdf(self):
-        """Открывает созданный PDF файл в стандартном просмотрщике"""
-        if self.last_pdf_path and os.path.exists(self.last_pdf_path):
+    def open_word(self):
+        """Открывает созданный Word файл в стандартном просмотрщике"""
+        if self.last_doc_path and os.path.exists(self.last_doc_path):
             try:
                 if os.name == 'nt':  # Для Windows
-                    os.startfile(self.last_pdf_path)
+                    os.startfile(self.last_doc_path)
                 elif os.name == 'posix':  # Для Mac и Linux
                     subprocess.run(
-                        ['open', self.last_pdf_path] if sys.platform == 'darwin' else ['xdg-open', self.last_pdf_path])
-                self.calculation_result.insert("end", f"\nPDF файл открыт: {self.last_pdf_path}\n")
+                        ['open', self.last_doc_path] if sys.platform == 'darwin' else ['xdg-open', self.last_doc_path])
+                self.calculation_result.insert("end", f"\nWord файл открыт: {self.last_doc_path}\n")
             except Exception as e:
-                self.calculation_result.insert("end", f"\nОшибка при открытии PDF: {str(e)}\n")
+                self.calculation_result.insert("end", f"\nОшибка при открытии Word файла: {str(e)}\n")
         else:
-            self.calculation_result.insert("end", "\nPDF файл не найден. Сначала создайте реестр.\n")
+            self.calculation_result.insert("end", "\nWord файл не найден. Сначала создайте реестр.\n")
 
     def get_month_number(self, month_name):
         """Возвращает номер месяца по его названию"""
@@ -347,7 +348,7 @@ class ConsumptionHistoryWindow:
             self.calculation_result.insert("end", f"Ошибка расчета: {str(e)}\n")
 
     def generate_registry(self):
-        """Генерирует реестр с показаниями и потреблением за расчетный месяц"""
+        """Генерирует реестр в формате Word с показаниями и потреблением"""
         try:
             # Проверяем, что данные загружены и рассчитаны
             if not self.table.get("1.0", "end-1c") or not self.calculation_result.get("1.0", "end-1c"):
@@ -361,20 +362,33 @@ class ConsumptionHistoryWindow:
 
             db = SqliteDB()
             try:
-                # Получаем имя абонента
-                fulname = db.execute_query(
+                # Получаем данные абонента с проверкой на None
+                abonent_data = db.execute_query(
                     "SELECT fulname FROM abonents WHERE id = ?",
                     (self.abonent_id,),
                     fetch_mode='one'
-                )[0]
+                )
 
-                # Получаем данные за расчетный месяц и предыдущий месяц
+                if not abonent_data:
+                    self.calculation_result.delete("1.0", "end")
+                    self.calculation_result.insert("end", "❌ Ошибка: абонент не найден!\n")
+                    return
+
+                fulname = abonent_data[0] if abonent_data[0] else "Не указано"
+
+                # Получаем данные за расчетный месяц с проверкой
                 end_month_data = db.execute_query(
                     "SELECT * FROM monthly_data WHERE abonent_id = ? AND month = ? AND year = ?",
                     (self.abonent_id, month, year),
                     fetch_mode='one'
                 )
 
+                if not end_month_data:
+                    self.calculation_result.delete("1.0", "end")
+                    self.calculation_result.insert("end", f"❌ Нет данных за {month_name} {year} года!\n")
+                    return
+
+                # Получаем данные за предыдущий месяц
                 prev_month = month - 1 if month > 1 else 12
                 prev_year = year if month > 1 else year - 1
 
@@ -384,177 +398,137 @@ class ConsumptionHistoryWindow:
                     fetch_mode='one'
                 )
 
-                if not end_month_data:
-                    self.calculation_result.delete("1.0", "end")
-                    self.calculation_result.insert("end", f"Нет данных за расчетный месяц {month}/{year}\n")
-                    return
+                # Создаем документ Word
+                from docx import Document
+                from docx.shared import Pt, Inches
+                from docx.enum.text import WD_ALIGN_PARAGRAPH
 
-                # Создаем структуру данных для реестра
-                registry_data = {
-                    "Услуга": [],
-                    "Предыдущие показания": [],
-                    "Текущие показания": [],
-                    "Потребление": [],
-                    "Единица измерения": []
-                }
+                doc = Document()
 
-                # Обрабатываем данные для каждой услуги
-                # Электроэнергия
+                # Настройка стилей
+                style = doc.styles['Normal']
+                style.font.name = 'Times New Roman'
+                style.font.size = Pt(12)
+
+                # Заголовок
+                title = doc.add_paragraph()
+                title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                title_run = title.add_run('РЕЕСТР\nвозмещения затрат за потребление электроэнергии и воды\n')
+                title_run.bold = True
+                title_run.font.size = Pt(14)
+
+                # Период
+                period = doc.add_paragraph()
+                period.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                period.add_run(f'за {month_name} {year} г.\n').bold = True
+
+                # Организация
+                org = doc.add_paragraph()
+                org.alignment = WD_ALIGN_PARAGRAPH.CENTER
+                org.add_run(f'{fulname}\n').bold = True
+
+                # Электроэнергия (индекс 4 в monthly_data)
                 if len(end_month_data) > 4 and end_month_data[4] is not None:
                     prev_value = float(start_month_data[4]) if start_month_data and len(start_month_data) > 4 and \
                                                                start_month_data[4] is not None else 0.0
                     curr_value = float(end_month_data[4])
-                    consumption = (curr_value - prev_value) * self.transformation_ratio
+                    consumption = curr_value - prev_value
+                    total_consumption = consumption * (
+                        self.transformation_ratio if hasattr(self, 'transformation_ratio') else 1)
 
-                    registry_data["Услуга"].append("Электроэнергия")
-                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
-                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
-                    registry_data["Потребление"].append(f"{consumption:.2f}")
-                    if self.transformation_ratio != 1:
-                        registry_data["Единица измерения"].append(f"кВт·ч (Кт={self.transformation_ratio})")
-                    else:
-                        registry_data["Единица измерения"].append("кВт·ч")
+                    doc.add_paragraph('1. Показания счетчика электроэнергии:', style='Normal')
+                    doc.add_paragraph(f'   - на начало периода: {prev_value:.1f} кВт·ч', style='Normal')
+                    doc.add_paragraph(f'   - на конец периода: {curr_value:.1f} кВт·ч', style='Normal')
+                    doc.add_paragraph(f'   - итого потребление: {consumption:.1f} кВт·ч', style='Normal')
 
-                # Вода
+                    if hasattr(self, 'transformation_ratio') and self.transformation_ratio != 1:
+                        doc.add_paragraph(f'   - коэффициент трансформации: {self.transformation_ratio}',
+                                          style='Normal')
+                        doc.add_paragraph(f'   - итого потребление с учетом КТ: {total_consumption:.1f} кВт·ч',
+                                          style='Normal')
+
+                    doc.add_paragraph('2. Тариф за потребленную электроэнергию: ______________ руб./кВт·ч',
+                                      style='Normal')
+                    doc.add_paragraph('   ИТОГО к оплате: ______________________ руб.', style='Normal')
+                    doc.add_paragraph('3. Тариф за заявленную мощность: _______________ руб./кВт', style='Normal')
+                    doc.add_paragraph('   Заявленная мощность: _________________ кВт', style='Normal')
+                    doc.add_paragraph('   ИТОГО к оплате: ________________ руб.', style='Normal')
+                    doc.add_paragraph('   ВСЕГО к оплате (п.2 + п.3): ________________ руб.', style='Normal')
+                    doc.add_paragraph()
+
+                # Вода (индекс 5)
                 if len(end_month_data) > 5 and end_month_data[5] is not None:
                     prev_value = float(start_month_data[5]) if start_month_data and len(start_month_data) > 5 and \
                                                                start_month_data[5] is not None else 0.0
                     curr_value = float(end_month_data[5])
                     consumption = curr_value - prev_value
 
-                    registry_data["Услуга"].append("Вода")
-                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
-                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
-                    registry_data["Потребление"].append(f"{consumption:.2f}")
-                    registry_data["Единица измерения"].append("м³")
+                    doc.add_paragraph('4. Показания счетчика воды:', style='Normal')
+                    doc.add_paragraph(f'   - на начало периода: {prev_value:.1f} м³', style='Normal')
+                    doc.add_paragraph(f'   - на конец периода: {curr_value:.1f} м³', style='Normal')
+                    doc.add_paragraph(f'   - итого потребление: {consumption:.1f} м³', style='Normal')
+                    doc.add_paragraph('   Тариф: ______________ руб./м³', style='Normal')
+                    doc.add_paragraph('   ИТОГО к оплате: ______________________ руб.', style='Normal')
+                    doc.add_paragraph()
 
-                # Сточные воды
+                # Сточные воды (индекс 6)
                 if len(end_month_data) > 6 and end_month_data[6] is not None:
                     prev_value = float(start_month_data[6]) if start_month_data and len(start_month_data) > 6 and \
                                                                start_month_data[6] is not None else 0.0
                     curr_value = float(end_month_data[6])
                     consumption = curr_value - prev_value
 
-                    registry_data["Услуга"].append("Сточные воды")
-                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
-                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
-                    registry_data["Потребление"].append(f"{consumption:.2f}")
-                    registry_data["Единица измерения"].append("м³")
+                    doc.add_paragraph('5. Показания счетчика сточных вод:', style='Normal')
+                    doc.add_paragraph(f'   - на начало периода: {prev_value:.1f} м³', style='Normal')
+                    doc.add_paragraph(f'   - на конец периода: {curr_value:.1f} м³', style='Normal')
+                    doc.add_paragraph(f'   - итого потребление: {consumption:.1f} м³', style='Normal')
+                    doc.add_paragraph('   Тариф: ______________ руб./м³', style='Normal')
+                    doc.add_paragraph('   ИТОГО к оплате: ______________________ руб.', style='Normal')
+                    doc.add_paragraph()
 
-                # Газ
+                # Газ (индекс 7)
                 if len(end_month_data) > 7 and end_month_data[7] is not None:
                     prev_value = float(start_month_data[7]) if start_month_data and len(start_month_data) > 7 and \
                                                                start_month_data[7] is not None else 0.0
                     curr_value = float(end_month_data[7])
                     consumption = curr_value - prev_value
 
-                    registry_data["Услуга"].append("Газ")
-                    registry_data["Предыдущие показания"].append(f"{prev_value:.2f}")
-                    registry_data["Текущие показания"].append(f"{curr_value:.2f}")
-                    registry_data["Потребление"].append(f"{consumption:.2f}")
-                    registry_data["Единица измерения"].append("м³")
+                    doc.add_paragraph('6. Показания счетчика газа:', style='Normal')
+                    doc.add_paragraph(f'   - на начало периода: {prev_value:.1f} м³', style='Normal')
+                    doc.add_paragraph(f'   - на конец периода: {curr_value:.1f} м³', style='Normal')
+                    doc.add_paragraph(f'   - итого потребление: {consumption:.1f} м³', style='Normal')
+                    doc.add_paragraph('   Тариф: ______________ руб./м³', style='Normal')
+                    doc.add_paragraph('   ИТОГО к оплате: ______________________ руб.', style='Normal')
+                    doc.add_paragraph()
 
-                df = pd.DataFrame(registry_data)
+                # Подписи
+                doc.add_paragraph('Бухгалтер Щекина Л.Н.\t/____________/', style='Normal')
+                doc.add_paragraph('Главный инженер Бирюков А.С. /____________/', style='Normal')
+                doc.add_paragraph('Согласовано:', style='Normal')
+                doc.add_paragraph('Арендатор ___________________/________________/', style='Normal')
 
-                # Создаем папку для реестров
+                # Сохраняем документ
                 folder_path = r"C:\Реестры по абонентам"
                 os.makedirs(folder_path, exist_ok=True)
 
-                # Формируем название файла
-                file_prefix = f"{fulname}_{month_name}_{year}"
-
-                # Сохраняем в Excel
-                xls_file_path = os.path.join(folder_path, f"{file_prefix}.xlsx")
-                with pd.ExcelWriter(xls_file_path, engine='openpyxl') as writer:
-                    df.to_excel(writer, index=False, sheet_name='Реестр')
-
-                    workbook = writer.book
-                    worksheet = writer.sheets['Реестр']
-
-                    # Устанавливаем ширину столбцов
-                    worksheet.column_dimensions['A'].width = 20
-                    worksheet.column_dimensions['B'].width = 20
-                    worksheet.column_dimensions['C'].width = 20
-                    worksheet.column_dimensions['D'].width = 15
-                    worksheet.column_dimensions['E'].width = 20
-
-                    # Добавляем заголовок
-                    worksheet['F1'] = f"Реестр показаний за {month_name} {year} года"
-                    worksheet['F2'] = f"Абонент: {fulname}"
-                    worksheet['F4'] = "Подписи:"
-                    worksheet['F5'] = "Бухгалтер: ____________________"
-                    worksheet['F6'] = "Главный инженер: ____________________"
-                    worksheet['F7'] = "Абонент: ____________________"
-
-                print(f"✅ Excel-реестр сохранен в {xls_file_path}")
-
-                # Создаем PDF
-                pdf_file_path = os.path.join(folder_path, f"{file_prefix}.pdf")
-                c = canvas.Canvas(pdf_file_path, pagesize=letter)
-                width, height = letter
-
-                # Устанавливаем шрифт с поддержкой кириллицы
-                try:
-                    from reportlab.pdfbase.ttfonts import TTFont
-                    from reportlab.pdfbase import pdfmetrics
-                    pdfmetrics.registerFont(TTFont('Arial', 'arial.ttf'))
-                    font_name = 'Arial'
-                except:
-                    font_name = 'Helvetica'
-
-                # Заголовок
-                c.setFont(font_name, 14)
-                c.drawString(100, height - 100, f"Реестр показаний за {month_name} {year} года")
-                c.setFont(font_name, 12)
-                c.drawString(100, height - 120, f"Абонент: {fulname}")
-
-                # Таблица данных
-                c.setFont(font_name, 10)
-                y = height - 160
-                headers = ["Услуга", "Пред.пок.", "Тек.пок.", "Потребление", "Ед.изм."]
-                for i, header in enumerate(headers):
-                    c.drawString(100 + i * 100, y, header)
-                y -= 20
-
-                for index, row in df.iterrows():
-                    values = [row["Услуга"], row["Предыдущие показания"],
-                              row["Текущие показания"], row["Потребление"],
-                              row["Единица измерения"]]
-                    for i, value in enumerate(values):
-                        c.drawString(100 + i * 100, y, str(value))
-                    y -= 15
-
-                    if y < 100:  # Если место заканчивается, создаем новую страницу
-                        c.showPage()
-                        y = height - 100
-                        c.setFont(font_name, 10)
-
-                # Подписи
-                c.setFont(font_name, 12)
-                c.drawString(100, y - 20, "Подписи:")
-                c.drawString(100, y - 40, "Бухгалтер: ____________________")
-                c.drawString(100, y - 60, "Главный инженер: ____________________")
-                c.drawString(100, y - 80, "Абонент: ____________________")
-
-                c.save()
-                print(f"✅ PDF-реестр сохранен в {pdf_file_path}")
-
-                # Сохраняем путь к PDF для последующего открытия
-                self.last_pdf_path = pdf_file_path
-
-                # Активируем кнопку открытия PDF
-                self.open_pdf_button.configure(state="normal", fg_color="green")
+                # Создаем имя файла без запрещенных символов
+                import re
+                safe_name = re.sub(r'[\\/*?:"<>|]', "", fulname)
+                file_name = f"{safe_name}_{month_name}_{year}_реестр.docx"
+                file_path = os.path.join(folder_path, file_name)
+                doc.save(file_path)
 
                 self.calculation_result.delete("1.0", "end")
-                self.calculation_result.insert("end",
-                                               f"Реестр успешно создан:\nExcel: {xls_file_path}\nPDF: {pdf_file_path}\n")
+                self.calculation_result.insert("end", f"✅ Реестр успешно создан:\n{file_path}\n")
 
-                # Добавляем информацию о возможности открыть PDF
-                self.calculation_result.insert("end", "\nНажмите кнопку 'Открыть PDF' для просмотра файла.\n")
+                # Сохраняем путь для открытия
+                self.last_doc_path = file_path
+                self.open_word_button.configure(state="normal", fg_color="green", text="Открыть Word")
+
 
             except Exception as e:
                 self.calculation_result.delete("1.0", "end")
-                self.calculation_result.insert("end", f"Ошибка создания реестра: {str(e)}\n")
+                self.calculation_result.insert("end", f"❌ Ошибка создания реестра: {str(e)}\n")
                 import traceback
                 traceback.print_exc()
 
@@ -563,4 +537,4 @@ class ConsumptionHistoryWindow:
 
         except Exception as e:
             self.calculation_result.delete("1.0", "end")
-            self.calculation_result.insert("end", f"Ошибка: {str(e)}\n")
+            self.calculation_result.insert("end", f"❌ Ошибка: {str(e)}\n")

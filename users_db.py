@@ -1,24 +1,43 @@
+import os
 import sqlite3
 from sqlite3 import Error
+from typing import Optional
+
 
 class SqliteDB:
     def __init__(self, db_name: str = 'abonent.db'):
+        # Определяем путь к папке `data`
+        self.db_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data')
+        self.db_path = os.path.join(self.db_dir, db_name)
+
+        # Создаём папку, если её нет
+        os.makedirs(self.db_dir, exist_ok=True)
+
         self.conn: Optional[sqlite3.Connection] = None
         self.cursor: Optional[sqlite3.Cursor] = None
+
         try:
-            self.conn = sqlite3.connect(db_name)
+            # Подключаемся к базе данных по правильному пути
+            self.conn = sqlite3.connect(self.db_path)
             self.cursor = self.conn.cursor()
             self._initialize_database()
             self.list_abonent = self.fetch_data()
         except Error as e:
-            self._handle_error(f"Ошибка при подключении к базе данных: {e}")
+            print(f"Ошибка при подключении к базе данных: {e}")
             raise
+
+    def _handle_error(self, message: str):
+        """Обработчик ошибок"""
+        print(message)
+        if self.conn:
+            self.conn.rollback()
 
     def _initialize_database(self) -> None:
         """Инициализирует структуру базы данных"""
         self.create_table_abonent()
         self.create_table_monthly_data()
         self._create_indexes()
+        self.conn.commit()
 
     def _create_indexes(self) -> None:
         """Создает необходимые индексы"""
@@ -35,23 +54,27 @@ class SqliteDB:
                             water_value INTEGER,
                             wastewater_value INTEGER,
                             gaz_value INTEGER)''')
-
-
-
+        self.conn.commit()
 
     def insert_data(self, data):
-        self.cursor.execute(
-            'INSERT INTO abonents  (fulname, elect_value, transformation_ratio_value,water_value,wastewater_value,gaz_value) '
-            'VALUES (?, ?, ?, ?, ?,?)', data)
-        self.conn.commit() #сохраняем изменения
-
+        try:
+            self.cursor.execute(
+                'INSERT INTO abonents (fulname, elect_value, transformation_ratio_value, water_value, wastewater_value, gaz_value) '
+                'VALUES (?, ?, ?, ?, ?, ?)', data)
+            self.conn.commit()
+        except sqlite3.Error as e:
+            self._handle_error(f"Ошибка при вставке данных: {e}")
+            raise
 
     def fetch_data(self):
-        self.cursor.execute('SELECT * FROM abonents')
-        list_abonents = self.cursor.fetchall()
-        print(f"Список абонентов:{list_abonents}")
-        return list_abonents
-
+        try:
+            self.cursor.execute('SELECT * FROM abonents')
+            list_abonents = self.cursor.fetchall()
+            print(f"Список абонентов:{list_abonents}")
+            return list_abonents
+        except sqlite3.Error as e:
+            self._handle_error(f"Ошибка при получении данных: {e}")
+            return []
 
     def update_data(self, data):
         pass
@@ -176,6 +199,16 @@ class SqliteDB:
         self.cursor.execute(query, (name,))
         result = self.cursor.fetchone()
         return result[0] if result else None
+
+    def get_abonent_by_id(self, abonent_id):
+        """Получает данные абонента по ID"""
+        try:
+            self.cursor.execute("SELECT * FROM abonents WHERE id = ?", (abonent_id,))
+            return self.cursor.fetchone()
+        except sqlite3.Error as e:
+            self._handle_error(f"Ошибка при получении данных абонента: {e}")
+            return None
+
 
     def execute_query(self, query, params=(), fetch_mode='one'):
         """
