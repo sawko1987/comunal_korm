@@ -478,10 +478,8 @@ class ConsumptionHistoryWindow:
                     curr_value = float(end_month_data[6])
                     consumption = curr_value - prev_value
 
-                    doc.add_paragraph('5. Показания счетчика сточных вод:', style='Normal')
-                    doc.add_paragraph(f'   - на начало периода: {prev_value:.1f} м³', style='Normal')
-                    doc.add_paragraph(f'   - на конец периода: {curr_value:.1f} м³', style='Normal')
-                    doc.add_paragraph(f'   - итого потребление: {consumption:.1f} м³', style='Normal')
+                    doc.add_paragraph('5. Водоотведение:', style='Normal')
+                    doc.add_paragraph(f'{consumption:.1f} м³', style='Normal')
                     doc.add_paragraph('   Тариф: ______________ руб./м³', style='Normal')
                     doc.add_paragraph('   ИТОГО к оплате: ______________________ руб.', style='Normal')
                     doc.add_paragraph()
