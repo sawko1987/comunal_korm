@@ -224,84 +224,98 @@ class Window:
         self.on_combobox_select()
 
     def refresh_data(self):
-        """Обновляет данные в интерфейсе"""
+        """Полностью обновляет данные в интерфейсе"""
         try:
+            # Обновляем список абонентов
             self.list_abonent = self.load_abonents()
-            self.update_combobox()
-            self.selected_abonent_info.delete("1.0", "end")
+
+            # Обновляем комбобокс
+            if self.list_abonent:
+                current_selection = self.combobox.get()
+                abonent_names = [abonent[1] for abonent in self.list_abonent]
+                self.combobox.configure(values=abonent_names)
+
+                # Восстанавливаем выбор, если абонент еще существует
+                if current_selection in abonent_names:
+                    self.combobox.set(current_selection)
+                else:
+                    self.combobox.set(abonent_names[0] if abonent_names else "")
+
+                # Обновляем информацию
+                self.on_combobox_select()
+            else:
+                self.combobox.configure(values=[])
+                self.selected_abonent_info.delete("1.0", "end")
+                self.selected_abonent_info.insert("1.0", "Нет доступных абонентов")
+
         except Exception as e:
-            print(f"Ошибка при обновлении данных: {e}")
-        self.on_combobox_select()
+            messagebox.showerror("Ошибка", f"Ошибка при обновлении данных: {str(e)}")
 
     def run_monthly_data_window(self):
         """Открывает окно внесения месячных данных"""
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                ctk.CTkMessageBox.showwarning("Предупреждение", "Сначала выберите абонента")
+                messagebox.showwarning("Предупреждение", "Сначала выберите абонента")
                 return
 
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
             if abonent_id:
-                # Создаем окно и ждем его закрытия
-                window = MonthlyDataWindow(self.root, 400, 600, abonent_id)
-                self.root.wait_window(window.top)  # Ждем закрытия окна
+                # Создаем окно (без ожидания закрытия)
+                MonthlyDataWindow(self.root, 400, 600, abonent_id)
 
-                # После закрытия окна обновляем данные
+                # Обновляем данные
                 self.refresh_data()
-                self.on_combobox_select()  # Явно обновляем информацию
+                self.on_combobox_select()
             else:
-                ctk.CTkMessageBox.showerror("Ошибка", "Не удалось определить ID абонента")
+                messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
         except Exception as e:
-            ctk.CTkMessageBox.showerror("Ошибка", f"Ошибка при открытии окна данных: {str(e)}")
+            messagebox.showerror("Ошибка", f"Ошибка при открытии окна данных: {str(e)}")
 
     def edit_abonent(self):
         """Открывает окно редактирования абонента"""
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                import tkinter.messagebox as mb
-                mb.showwarning("Предупреждение", "Не выбран абонент для редактирования")
+                messagebox.showwarning("Предупреждение", "Не выбран абонент для редактирования")
                 return
 
-            # Получаем ID и данные выбранного абонента
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
             if not abonent_id:
-                import tkinter.messagebox as mb
-                mb.showerror("Ошибка", "Не удалось определить ID абонента")
+                messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
                 return
 
             abonent_data = self.db.get_abonent_by_id(abonent_id)
             if not abonent_data:
-                import tkinter.messagebox as mb
-                mb.showerror("Ошибка", "Не удалось загрузить данные абонента")
+                messagebox.showerror("Ошибка", "Не удалось загрузить данные абонента")
                 return
 
-            # Создаем окно редактирования
-            EditAbonentWindow(self.root, 400, 650, abonent_data)
+            # Создаем окно редактирования и ждем его закрытия
+            edit_window = EditAbonentWindow(self.root, 400, 650, abonent_data)
 
-            # Обновляем данные после закрытия окна редактирования
-            self.refresh_data()
+            # После закрытия окна редактирования:
+            self.refresh_data()  # Полностью обновляем данные
+            self.combobox.set(selected_name)  # Восстанавливаем выбор абонента
+            self.on_combobox_select()  # Обновляем информацию
+
         except Exception as e:
-            import tkinter.messagebox as mb
-            mb.showerror("Ошибка", f"Ошибка при редактировании абонента: {str(e)}")
-        self.on_combobox_select()
+            messagebox.showerror("Ошибка", f"Ошибка при редактировании абонента: {str(e)}")
 
     def run_consumption_history_window(self):
         """Открывает окно истории потребления"""
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                ctk.CTkMessageBox.showwarning("Предупреждение", "Сначала выберите абонента")
+                messagebox.showwarning("Предупреждение", "Сначала выберите абонента")
                 return
 
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
             if abonent_id:
                 self.create_consumption_history_window(900, 700, abonent_id)
             else:
-                ctk.CTkMessageBox.showerror("Ошибка", "Не удалось определить ID абонента")
+                messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
         except Exception as e:
-            ctk.CTkMessageBox.showerror("Ошибка", f"Ошибка при открытии окна истории: {str(e)}")
+            messagebox.showerror("Ошибка", f"Ошибка при открытии окна истории: {str(e)}")
 
     def run(self):
         """Запускает главное окно"""
@@ -334,4 +348,4 @@ if __name__ == "__main__":
         app.run()
     except Exception as e:
         print(f"Критическая ошибка при запуске приложения: {e}")
-        ctk.CTkMessageBox.showerror("Ошибка", f"Не удалось запустить приложение: {str(e)}")
+        messagebox.showerror("Ошибка", f"Не удалось запустить приложение: {str(e)}")

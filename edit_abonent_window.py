@@ -2,23 +2,29 @@ from pprint import pprint
 from tkinter import *
 import customtkinter as ctk
 from CustomTkinterMessagebox import CTkMessagebox
+
+
+
+import tkinter.messagebox as messagebox
+import customtkinter as ctk
 from users_db import SqliteDB
+from tkinter import BooleanVar
 
 
 class EditAbonentWindow:
     def __init__(self, parent, width, height, abonent_data, title="Редактирование абонента",
                  resizable=(False, False), icon='image/korm.ico'):
-        self.root = ctk.CTkToplevel(parent)
-        self.root.title(title)
-        self.root.geometry(f"{width}x{height}")
-        self.root.resizable(resizable[0], resizable[1])
+        self.top = ctk.CTkToplevel(parent)
+        self.top.title(title)
+        self.top.geometry(f"{width}x{height}")
+        self.top.resizable(resizable[0], resizable[1])
         if icon:
-            self.root.iconbitmap(icon)
+            self.top.iconbitmap(icon)
 
-        self.abonent_data = abonent_data  # Данные выбранного абонента
-        self.abonent_id = abonent_data[0]  # ID абонента
+        self.abonent_data = abonent_data
+        self.abonent_id = abonent_data[0]
 
-        # Переменные для чекбоксов
+        # Инициализация переменных и виджетов
         self.var_elect = BooleanVar(value=abonent_data[2] is not None)
         self.water_var = BooleanVar(value=abonent_data[4] is not None)
         self.wastewater_var = BooleanVar(value=abonent_data[5] is not None)
@@ -40,40 +46,42 @@ class EditAbonentWindow:
         self.draw_abonent_widget()
         self.grab_focus()
 
+
+
     def grab_focus(self):
-        self.root.grab_set()
-        self.root.focus_set()
-        self.root.wait_window()
+        self.top.grab_set()
+        self.top.focus_set()
+        self.top.wait_window()
 
     def creat_frame(self):
-        frame = ctk.CTkFrame(master=self.root, width=100, height=100)
+        frame = ctk.CTkFrame(master=self.top, width=100, height=100)
         frame.pack(side=BOTTOM, fill=X, padx=0, pady=50)
         return frame
 
     def draw_abonent_widget(self):
-        ctk.CTkLabel(master=self.root, text="Наименование организации абонента").pack()
+        ctk.CTkLabel(master=self.top, text="Наименование организации абонента").pack()
 
         # Поле с текущим именем абонента
-        self.name_entry = ctk.CTkEntry(master=self.root, width=250)
+        self.name_entry = ctk.CTkEntry(master=self.top, width=250)
         self.name_entry.insert(0, self.abonent_data[1])
         self.name_entry.pack()
 
-        ctk.CTkLabel(master=self.root,
+        ctk.CTkLabel(master=self.top,
                      text="Измените услуги и показания абонента:").pack()
 
         # Создаем CheckBox и Entry для каждого параметра
         for var, text, value in self.var_entry:
             # Создаем чекбокс
-            ctk.CTkCheckBox(master=self.root, text=text, variable=var, onvalue=1, offvalue=0,
+            ctk.CTkCheckBox(master=self.top, text=text, variable=var, onvalue=1, offvalue=0,
                             command=lambda v=var, t=text, val=value: self.chek_chek_box(v, t, val)).pack(anchor="w")
 
             # Если значение было, сразу создаем поле ввода
             if var.get():
-                self.label = ctk.CTkLabel(master=self.root, text=f'{text}')
+                self.label = ctk.CTkLabel(master=self.top, text=f'{text}')
                 self.label.pack()
                 self.labels[text] = self.label
 
-                entry = ctk.CTkEntry(master=self.root, width=250)
+                entry = ctk.CTkEntry(master=self.top, width=250)
                 if value is not None:
                     entry.insert(0, str(value))
                 entry.pack()
@@ -81,16 +89,16 @@ class EditAbonentWindow:
 
         button_frame = self.creat_frame()
         ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=30, pady=5)
-        ctk.CTkButton(button_frame, text="Отмена", command=self.root.destroy).pack(side=LEFT, padx=30, pady=5)
+        ctk.CTkButton(button_frame, text="Отмена", command=self.top.destroy).pack(side=LEFT, padx=30, pady=5)
 
     def chek_chek_box(self, var, text, default_value=None):
         if var.get():  # Если CheckBox отмечен
             if text not in self.entries:
-                self.label = ctk.CTkLabel(master=self.root, text=f'{text}')
+                self.label = ctk.CTkLabel(master=self.top, text=f'{text}')
                 self.label.pack()
                 self.labels[text] = self.label
 
-                entry = ctk.CTkEntry(master=self.root, width=250)
+                entry = ctk.CTkEntry(master=self.top, width=250)
                 if default_value is not None:
                     entry.insert(0, str(default_value))
                 entry.pack()
@@ -107,35 +115,49 @@ class EditAbonentWindow:
         """Сохраняет измененные данные абонента"""
         try:
             # Собираем данные из полей ввода
-            fulname = self.name_entry.get()
-            elect_value = self.entries.get("Электроэнергия", None)
-            transformation_ratio_value = self.entries.get("Коэффициент трансформации", None)
-            water_value = self.entries.get("Вода", None)
-            wastewater_value = self.entries.get("Водоотведение", None)
-            gaz_value = self.entries.get("Газ", None)
+            fulname = self.name_entry.get().strip()
+            if not fulname:
+                messagebox.showwarning("Предупреждение", "Название организации не может быть пустым")
+                return
 
-            # Преобразуем значения в числа, если они существуют
-            elect_value = float(elect_value.get()) if elect_value and elect_value.get() else None
-            transformation_ratio_value = int(
-                transformation_ratio_value.get()) if transformation_ratio_value and transformation_ratio_value.get() else None
-            water_value = int(water_value.get()) if water_value and water_value.get() else None
-            wastewater_value = int(wastewater_value.get()) if wastewater_value and wastewater_value.get() else None
-            gaz_value = int(gaz_value.get()) if gaz_value and gaz_value.get() else None
+            # Получаем значения из полей, если они существуют
+            def get_entry_value(field_name):
+                if field_name in self.entries:
+                    value = self.entries[field_name].get().strip()
+                    return value if value else None
+                return None
+
+            elect_value = get_entry_value("Электроэнергия")
+            transformation_ratio_value = get_entry_value("Коэффициент трансформации")
+            water_value = get_entry_value("Вода")
+            wastewater_value = get_entry_value("Водоотведение")
+            gaz_value = get_entry_value("Газ")
+
+            # Преобразуем значения в числа
+            try:
+                elect_value = float(elect_value) if elect_value is not None else None
+                transformation_ratio_value = int(
+                    transformation_ratio_value) if transformation_ratio_value is not None else None
+                water_value = int(water_value) if water_value is not None else None
+                wastewater_value = int(wastewater_value) if wastewater_value is not None else None
+                gaz_value = int(gaz_value) if gaz_value is not None else None
+            except ValueError as e:
+                messagebox.showerror("Ошибка", f"Некорректные числовые значения: {str(e)}")
+                return
 
             # Обновляем данные в базе данных
             db = SqliteDB()
-            query = """UPDATE abonents 
-                      SET fulname = ?, 
-                          elect_value = ?, 
-                          transformation_ratio_value = ?, 
-                          water_value = ?, 
-                          wastewater_value = ?, 
-                          gaz_value = ?
-                      WHERE id = ?"""
-            db.execute_query(query, (fulname, elect_value, transformation_ratio_value,
-                                     water_value, wastewater_value, gaz_value, self.abonent_id), fetch_mode=None)
-            db.close_connection()
+            try:
+                if db.update_data(self.abonent_id, fulname, elect_value, transformation_ratio_value,
+                                  water_value, wastewater_value, gaz_value):
+                    messagebox.showinfo("Успех", "Данные успешно сохранены")
+                    self.top.destroy()
+                else:
+                    messagebox.showerror("Ошибка", "Не удалось сохранить данные")
+            except Exception as db_error:
+                messagebox.showerror("Ошибка базы данных", f"Ошибка при сохранении: {str(db_error)}")
+            finally:
+                db.close_connection()
 
-            self.root.destroy()
         except Exception as e:
-            CTkMessagebox(title="Ошибка", message=f"Ошибка при сохранении данных: {str(e)}", icon="cancel")
+            messagebox.showerror("Ошибка", f"Ошибка при сохранении данных: {str(e)}")

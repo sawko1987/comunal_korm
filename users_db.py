@@ -76,8 +76,25 @@ class SqliteDB:
             self._handle_error(f"Ошибка при получении данных: {e}")
             return []
 
-    def update_data(self, data):
-        pass
+    def update_data(self, abonent_id, fulname, elect_value=None, transformation_ratio_value=None,
+                    water_value=None, wastewater_value=None, gaz_value=None):
+        """Обновляет данные абонента"""
+        try:
+            query = """UPDATE abonents 
+                      SET fulname = ?, 
+                          elect_value = ?, 
+                          transformation_ratio_value = ?, 
+                          water_value = ?, 
+                          wastewater_value = ?, 
+                          gaz_value = ?
+                      WHERE id = ?"""
+            self.cursor.execute(query, (fulname, elect_value, transformation_ratio_value,
+                                        water_value, wastewater_value, gaz_value, abonent_id))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            self._handle_error(f"Ошибка при обновлении данных: {e}")
+            return False
 
     def delete_data(self, name):
 
