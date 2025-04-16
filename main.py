@@ -37,6 +37,11 @@ class Window:
         # Инициализация интерфейса
         self.draw_widget()
 
+        # Установим начальное значение и вызовем обработчик
+        if self.list_abonent:
+            self.combobox.set(self.list_abonent[0][1])
+            self.on_combobox_select()
+
     def load_abonents(self):
         """Загружает список абонентов из базы данных"""
         try:
@@ -51,6 +56,7 @@ class Window:
         """Создает окно добавления абонента"""
         AddAbonentWindow(self.root, width, height, title="Добавить абонента")
         self.refresh_data()
+        self.on_combobox_select()
 
     def create_monthly_data_window(self, width, height, abonent_id, title=None):
         """Создает окно внесения месячных данных"""
@@ -92,7 +98,7 @@ class Window:
         ctk.CTkLabel(tab1, text="Выберите абонента:").pack(pady=5)
         self.combobox = ctk.CTkComboBox(tab1, width=250)
         self.combobox.pack()
-        self.combobox.bind("<<ComboboxSelected>>", lambda e: self.on_combobox_select())
+        self.combobox.configure(command=self.on_combobox_select_callback)
 
         # Кнопки работы с данными
         ctk.CTkButton(tab1, text="Внести показания",
@@ -131,27 +137,70 @@ class Window:
 
     def on_combobox_select(self, event=None):
         """Обрабатывает выбор абонента из списка"""
+        print("Событие выбора абонента сработало!")  # Отладочный вывод
         try:
             selected_name = self.combobox.get()
             if not selected_name:
                 return
 
+            # Очищаем поле перед загрузкой новых данных
+            self.selected_abonent_info.delete("1.0", "end")
+
+            # Загружаем свежие данные из БД
+            self.list_abonent = self.load_abonents()  # Обновляем список абонентов
+
+            # Находим выбранного абонента
             selected_abonent = next((abonent for abonent in self.list_abonent
                                      if abonent[1] == selected_name), None)
 
-            if selected_abonent:
-                info = (
-                    f"Название: {selected_abonent[1]}\n\n"
-                    f"Электроэнергия: {selected_abonent[2] or 'нет данных'}\n"
-                    f"Коэффициент трансформации: {selected_abonent[3] or 'нет данных'}\n"
-                    f"Вода: {selected_abonent[4] or 'нет данных'}\n"
-                    f"Водоотведение: {selected_abonent[5] or 'нет данных'}\n"
-                    f"Газ: {selected_abonent[6] or 'нет данных'}"
-                )
-                self.selected_abonent_info.delete("1.0", "end")
-                self.selected_abonent_info.insert("1.0", info)
+            if not selected_abonent:
+                self.selected_abonent_info.insert("1.0", "Абонент не найден")
+                return
+
+            # Основная информация об абоненте
+            info = (
+                f"Название: {selected_abonent[1]}\n\n"
+                f"Электроэнергия: {selected_abonent[2] or 'нет данных'}\n"
+                f"Коэффициент трансформации: {selected_abonent[3] or 'нет данных'}\n"
+                f"Вода: {selected_abonent[4] or 'нет данных'}\n"
+                f"Водоотведение: {selected_abonent[5] or 'нет данных'}\n"
+                f"Газ: {selected_abonent[6] or 'нет данных'}\n\n"
+            )
+
+            # Добавляем информацию о последних месяцах с данными
+            abonent_id = self.db.get_abonent_id_by_name(selected_name)
+            if abonent_id:
+                try:
+                    last_months_data = self.db.get_last_months_data(abonent_id)
+                    if last_months_data:
+                        info += "Последние внесенные данные:\n"
+                        info += "-" * 30 + "\n"
+
+                        for month_data in last_months_data:
+                            month, year, electricity, water, wastewater, gas = month_data
+                            info += (
+                                    f"Месяц: {self.format_month(month)} {year}\n"
+                                    f"Электричество: {electricity or 'нет данных'}\n"
+                                    f"Вода: {water or 'нет данных'}\n"
+                                    f"Водоотведение: {wastewater or 'нет данных'}\n"
+                                    f"Газ: {gas or 'нет данных'}\n"
+                                    + "-" * 30 + "\n"
+                            )
+                    else:
+                        info += "Нет данных о потреблении\n"
+                except Exception as db_error:
+                    print(f"Ошибка при получении данных: {db_error}")
+                    info += "Ошибка при загрузке данных\n"
+
+            self.selected_abonent_info.insert("1.0", info)
+
         except Exception as e:
             print(f"Ошибка при обработке выбора абонента: {e}")
+            self.selected_abonent_info.insert("1.0", f"Ошибка: {str(e)}")
+
+    def on_combobox_select_callback(self, choice):
+        """Обработчик выбора в комбобоксе"""
+        self.on_combobox_select()
 
     def delete_abonent(self):
         """Удаляет выбранного абонента"""
@@ -172,6 +221,7 @@ class Window:
                 messagebox.showinfo("Успех", f"Абонент '{selected_name}' удален")
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка при удалении абонента: {str(e)}")
+        self.on_combobox_select()
 
     def refresh_data(self):
         """Обновляет данные в интерфейсе"""
@@ -181,6 +231,7 @@ class Window:
             self.selected_abonent_info.delete("1.0", "end")
         except Exception as e:
             print(f"Ошибка при обновлении данных: {e}")
+        self.on_combobox_select()
 
     def run_monthly_data_window(self):
         """Открывает окно внесения месячных данных"""
@@ -192,7 +243,13 @@ class Window:
 
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
             if abonent_id:
-                self.create_monthly_data_window(400, 600, abonent_id)
+                # Создаем окно и ждем его закрытия
+                window = MonthlyDataWindow(self.root, 400, 600, abonent_id)
+                self.root.wait_window(window.top)  # Ждем закрытия окна
+
+                # После закрытия окна обновляем данные
+                self.refresh_data()
+                self.on_combobox_select()  # Явно обновляем информацию
             else:
                 ctk.CTkMessageBox.showerror("Ошибка", "Не удалось определить ID абонента")
         except Exception as e:
@@ -228,6 +285,7 @@ class Window:
         except Exception as e:
             import tkinter.messagebox as mb
             mb.showerror("Ошибка", f"Ошибка при редактировании абонента: {str(e)}")
+        self.on_combobox_select()
 
     def run_consumption_history_window(self):
         """Открывает окно истории потребления"""
@@ -253,6 +311,14 @@ class Window:
             # Гарантированно закрываем соединение при выходе
             if hasattr(self, 'db') and self.db:
                 self.db.close_connection()
+
+    def format_month(self, month_num):
+        """Форматирует номер месяца в название"""
+        months = [
+            "Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
+            "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"
+        ]
+        return months[month_num - 1] if 1 <= month_num <= 12 else f"Месяц {month_num}"
 
 
 if __name__ == "__main__":

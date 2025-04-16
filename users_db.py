@@ -245,5 +245,58 @@ class SqliteDB:
             print(f"Неожиданная ошибка при выполнении запроса: {e}")
             return None
 
+    def get_monthly_data_for_period(self, abonent_id, start_date, end_date):
+        """Получает данные за указанный период для абонента"""
+        query = """
+        SELECT * FROM monthly_data 
+        WHERE abonent_id = ? AND date BETWEEN ? AND ?
+        ORDER BY date DESC
+        """
+        return self.execute_query(query, (abonent_id, start_date.strftime('%Y-%m-%d'),
+                                          end_date.strftime('%Y-%m-%d')))
 
 
+    def get_table_columns(self, table_name):
+        """Возвращает список столбцов указанной таблицы"""
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = [column[1] for column in cursor.fetchall()]
+            return columns
+        except Exception as e:
+            print(f"Ошибка при получении столбцов таблицы {table_name}: {e}")
+            return None
+
+    def print_table_structure(self, table_name):
+        """Выводит структуру указанной таблицы"""
+        try:
+            cursor = self.connection.cursor()
+            cursor.execute(f"PRAGMA table_info({table_name})")
+            columns = cursor.fetchall()
+            print(f"Структура таблицы {table_name}:")
+            for column in columns:
+                print(column)
+        except Exception as e:
+            print(f"Ошибка при получении структуры таблицы {table_name}: {e}")
+
+    def get_last_months_with_data(self, abonent_id, limit=3):
+        """Возвращает последние месяцы, по которым есть данные"""
+        query = """
+        SELECT DISTINCT month, year 
+        FROM monthly_data 
+        WHERE abonent_id = ?
+        ORDER BY year DESC, month DESC
+        LIMIT ?
+        """
+        return self.execute_query(query, (abonent_id, limit), fetch_mode='all')
+
+    def get_last_months_data(self, abonent_id, limit=3):
+        """Возвращает данные за последние N месяцев с показаниями"""
+        query = """
+        SELECT month, year, electricity, water, wastewater, gas
+        FROM monthly_data 
+        WHERE abonent_id = ?
+        ORDER BY year DESC, month DESC
+        LIMIT ?
+        """
+        return self.execute_query(query, (abonent_id, limit), fetch_mode='all')
