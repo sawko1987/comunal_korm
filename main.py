@@ -146,6 +146,13 @@ class Window:
         ctk.CTkButton(tab1, text="История потребления",
                       command=self.run_consumption_history_window).pack(pady=10)
 
+        # Вкладка "Настройки"
+        ctk.CTkLabel(tab3, text="Настройки программы").pack(pady=10)
+        
+        # Кнопка настроек
+        ctk.CTkButton(tab3, text="Открыть настройки",
+                      command=self.open_settings_window).pack(pady=5)
+
         # Поле для отображения информации об абоненте
         self.selected_abonent_info = ctk.CTkTextbox(self.root, width=400, height=200,
                                                     font=("Arial", 14), wrap="word")
@@ -356,6 +363,15 @@ class Window:
                 messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
         except Exception as e:
             messagebox.showerror("Ошибка", f"Ошибка при открытии окна истории: {str(e)}")
+
+    def open_settings_window(self):
+        """Открывает окно настроек"""
+        try:
+            from settings_window import SettingsWindow
+            settings_window = SettingsWindow(self.root, 400, 500)
+            settings_window.root.wait_window()  # Ждем закрытия окна
+        except Exception as e:
+            messagebox.showerror("Ошибка", f"Ошибка при открытии окна настроек: {str(e)}")
 
     def run(self):
         """Запускает главное окно"""
