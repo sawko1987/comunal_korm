@@ -35,8 +35,10 @@ class SqliteDB:
     def _initialize_database(self) -> None:
         """Инициализирует структуру базы данных"""
         self.create_table_abonent()
+        self._update_table_structure()
         self.create_table_monthly_data()
         self._create_indexes()
+        self.update_abonent_services()  # Обновляем флаги услуг
         self.conn.commit()
 
     def _create_indexes(self) -> None:
@@ -53,14 +55,28 @@ class SqliteDB:
                             transformation_ratio_value INTEGER,
                             water_value INTEGER,
                             wastewater_value INTEGER,
-                            gaz_value INTEGER)''')
+                            gaz_value INTEGER,
+                            uses_electricity BOOLEAN DEFAULT 0,
+                            uses_water BOOLEAN DEFAULT 0,
+                            uses_wastewater BOOLEAN DEFAULT 0,
+                            uses_gas BOOLEAN DEFAULT 0)''')
         self.conn.commit()
 
     def insert_data(self, data):
         try:
             self.cursor.execute(
-                'INSERT INTO abonents (fulname, elect_value, transformation_ratio_value, water_value, wastewater_value, gaz_value) '
-                'VALUES (?, ?, ?, ?, ?, ?)', data)
+                '''INSERT INTO abonents (
+                    fulname, 
+                    elect_value, 
+                    transformation_ratio_value, 
+                    water_value, 
+                    wastewater_value, 
+                    gaz_value,
+                    uses_electricity,
+                    uses_water,
+                    uses_wastewater,
+                    uses_gas
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)''', data)
             self.conn.commit()
         except sqlite3.Error as e:
             self._handle_error(f"Ошибка при вставке данных: {e}")
@@ -77,7 +93,8 @@ class SqliteDB:
             return []
 
     def update_data(self, abonent_id, fulname, elect_value=None, transformation_ratio_value=None,
-                    water_value=None, wastewater_value=None, gaz_value=None):
+                    water_value=None, wastewater_value=None, gaz_value=None,
+                    uses_electricity=None, uses_water=None, uses_wastewater=None, uses_gas=None):
         """Обновляет данные абонента"""
         try:
             query = """UPDATE abonents 
@@ -86,10 +103,25 @@ class SqliteDB:
                           transformation_ratio_value = ?, 
                           water_value = ?, 
                           wastewater_value = ?, 
-                          gaz_value = ?
+                          gaz_value = ?,
+                          uses_electricity = ?,
+                          uses_water = ?,
+                          uses_wastewater = ?,
+                          uses_gas = ?
                       WHERE id = ?"""
-            self.cursor.execute(query, (fulname, elect_value, transformation_ratio_value,
-                                        water_value, wastewater_value, gaz_value, abonent_id))
+            self.cursor.execute(query, (
+                fulname, 
+                elect_value, 
+                transformation_ratio_value,
+                water_value, 
+                wastewater_value, 
+                gaz_value,
+                uses_electricity,
+                uses_water,
+                uses_wastewater,
+                uses_gas,
+                abonent_id
+            ))
             self.conn.commit()
             return True
         except sqlite3.Error as e:
@@ -219,10 +251,18 @@ class SqliteDB:
 
     def get_abonent_by_id(self, abonent_id):
         """Получает данные абонента по ID"""
+        print(f"\n=== Получение данных абонента по ID {abonent_id} ===")
         try:
             self.cursor.execute("SELECT * FROM abonents WHERE id = ?", (abonent_id,))
-            return self.cursor.fetchone()
+            result = self.cursor.fetchone()
+            print(f"Результат запроса: {result}")
+            if result:
+                print("Данные абонента успешно получены")
+            else:
+                print("Абонент не найден")
+            return result
         except sqlite3.Error as e:
+            print(f"ОШИБКА при получении данных абонента: {e}")
             self._handle_error(f"Ошибка при получении данных абонента: {e}")
             return None
 
@@ -308,12 +348,191 @@ class SqliteDB:
         return self.execute_query(query, (abonent_id, limit), fetch_mode='all')
 
     def get_last_months_data(self, abonent_id, limit=3):
-        """Возвращает данные за последние N месяцев с показаниями"""
-        query = """
-        SELECT month, year, electricity, water, wastewater, gas
-        FROM monthly_data 
-        WHERE abonent_id = ?
-        ORDER BY year DESC, month DESC
-        LIMIT ?
+        """Получает данные за последние месяцы"""
+        try:
+            query = """
+                SELECT month, year, electricity, water, wastewater, gas
+                FROM monthly_data
+                WHERE abonent_id = ?
+                ORDER BY year DESC, month DESC
+                LIMIT ?
+            """
+            self.cursor.execute(query, (abonent_id, limit))
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении данных за последние месяцы: {e}")
+            return None
+
+    def get_last_months_consumption(self, abonent_id, utility_type, limit=3):
         """
-        return self.execute_query(query, (abonent_id, limit), fetch_mode='all')
+        Получает данные о потреблении конкретной услуги за последние месяцы
+        
+        Args:
+            abonent_id: ID абонента
+            utility_type: тип услуги ('electricity', 'water', 'wastewater', 'gas')
+            limit: количество последних месяцев
+            
+        Returns:
+            list: список значений потребления
+        """
+        try:
+            # Маппинг названий услуг на названия столбцов в БД
+            utility_mapping = {
+                'electricity': 'electricity',
+                'water': 'water',
+                'wastewater': 'wastewater',
+                'gas': 'gas'
+            }
+            
+            if utility_type not in utility_mapping:
+                raise ValueError(f"Неизвестный тип услуги: {utility_type}")
+                
+            column = utility_mapping[utility_type]
+            
+            query = f"""
+                SELECT {column}
+                FROM monthly_data
+                WHERE abonent_id = ? AND {column} IS NOT NULL
+                ORDER BY year DESC, month DESC
+                LIMIT ?
+            """
+            
+            self.cursor.execute(query, (abonent_id, limit))
+            results = self.cursor.fetchall()
+            
+            # Извлекаем значения из кортежей
+            return [row[0] for row in results]
+            
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении данных о потреблении: {e}")
+            return None
+        except Exception as e:
+            print(f"Неожиданная ошибка: {e}")
+            return None
+
+    def get_monthly_data_by_date(self, abonent_id, month, year):
+        """Получает данные за конкретный месяц и год"""
+        try:
+            query = """
+                SELECT electricity, water, wastewater, gas
+                FROM monthly_data
+                WHERE abonent_id = ? AND month = ? AND year = ?
+            """
+            self.cursor.execute(query, (abonent_id, month, year))
+            result = self.cursor.fetchone()
+            
+            if result:
+                return {
+                    'electricity': result[0],
+                    'water': result[1],
+                    'wastewater': result[2],
+                    'gas': result[3]
+                }
+            return None
+            
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении данных за месяц: {e}")
+            return None
+
+    def update_monthly_data(self, abonent_id, month, year, electricity=None, water=None, wastewater=None, gas=None):
+        """Обновляет месячные данные"""
+        try:
+            query = """
+                UPDATE monthly_data
+                SET electricity = ?,
+                    water = ?,
+                    wastewater = ?,
+                    gas = ?
+                WHERE abonent_id = ? AND month = ? AND year = ?
+            """
+            self.cursor.execute(query, (electricity, water, wastewater, gas, abonent_id, month, year))
+            self.conn.commit()
+            return True
+        except sqlite3.Error as e:
+            print(f"Ошибка при обновлении месячных данных: {e}")
+            return False
+
+    def get_all_monthly_data(self, abonent_id):
+        """Получает все месячные данные для абонента"""
+        try:
+            query = """
+                SELECT id, abonent_id, month, year, electricity, water, wastewater, gas
+                FROM monthly_data
+                WHERE abonent_id = ?
+                ORDER BY year DESC, month DESC
+            """
+            self.cursor.execute(query, (abonent_id,))
+            return self.cursor.fetchall()
+        except sqlite3.Error as e:
+            print(f"Ошибка при получении месячных данных: {e}")
+            return None
+        except Exception as e:
+            print(f"Неожиданная ошибка: {e}")
+            return None
+
+    def _update_table_structure(self):
+        """Обновляет структуру таблицы, добавляя новые столбцы"""
+        try:
+            # Проверяем наличие столбцов
+            self.cursor.execute("PRAGMA table_info(abonents)")
+            columns = {column[1] for column in self.cursor.fetchall()}
+            
+            # Список необходимых столбцов и их типов
+            required_columns = {
+                'uses_electricity': 'BOOLEAN DEFAULT 0',
+                'uses_water': 'BOOLEAN DEFAULT 0',
+                'uses_wastewater': 'BOOLEAN DEFAULT 0',
+                'uses_gas': 'BOOLEAN DEFAULT 0'
+            }
+            
+            # Добавляем отсутствующие столбцы
+            for column, type_def in required_columns.items():
+                if column not in columns:
+                    print(f"Добавляем столбец {column}")
+                    self.cursor.execute(f"ALTER TABLE abonents ADD COLUMN {column} {type_def}")
+            
+            self.conn.commit()
+            print("Структура таблицы успешно обновлена")
+            
+        except Error as e:
+            print(f"Ошибка при обновлении структуры таблицы: {e}")
+            self.conn.rollback()
+
+    def update_abonent_services(self):
+        """Обновляет флаги услуг для существующих абонентов на основе их показаний"""
+        try:
+            print("\n=== Обновление флагов услуг для абонентов ===")
+            # Получаем всех абонентов
+            self.cursor.execute("SELECT id, elect_value, water_value, wastewater_value, gaz_value FROM abonents")
+            abonents = self.cursor.fetchall()
+            
+            for abonent in abonents:
+                abonent_id = abonent[0]
+                uses_electricity = 1 if abonent[1] is not None else 0
+                uses_water = 1 if abonent[2] is not None else 0
+                uses_wastewater = 1 if abonent[3] is not None else 0
+                uses_gas = 1 if abonent[4] is not None else 0
+                
+                print(f"\nАбонент ID {abonent_id}:")
+                print(f"Электроэнергия: {uses_electricity}")
+                print(f"Вода: {uses_water}")
+                print(f"Водоотведение: {uses_wastewater}")
+                print(f"Газ: {uses_gas}")
+                
+                # Обновляем флаги
+                self.cursor.execute("""
+                    UPDATE abonents 
+                    SET uses_electricity = ?,
+                        uses_water = ?,
+                        uses_wastewater = ?,
+                        uses_gas = ?
+                    WHERE id = ?
+                """, (uses_electricity, uses_water, uses_wastewater, uses_gas, abonent_id))
+            
+            self.conn.commit()
+            print("\nФлаги услуг успешно обновлены")
+            
+        except sqlite3.Error as e:
+            print(f"Ошибка при обновлении флагов услуг: {e}")
+            self._handle_error(f"Ошибка при обновлении флагов услуг: {e}")
+            return False

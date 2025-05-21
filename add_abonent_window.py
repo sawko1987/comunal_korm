@@ -3,120 +3,302 @@ from tkinter import *
 import customtkinter as ctk
 #import sqlite
 from sqlite3 import Error
-from CustomTkinterMessagebox import CTkMessagebox
+from CTkMessagebox import CTkMessagebox
 from users_db import SqliteDB
 
 
 class AddAbonentWindow:
 
-    def __init__(self,parent, width, height, title="Учет коммунальных услуг АО_Корммаш", resizable=(False, False),
+    def __init__(self, parent, width, height, title="Учет коммунальных услуг АО_Корммаш", resizable=(True, True),
                  icon='image/korm.ico'):
+        print("Инициализация AddAbonentWindow")  # Отладочный вывод
         self.root = ctk.CTkToplevel(parent)
         self.root.title(title)
-        self.root.geometry(f"{width}x{height}")
+        self.root.geometry(f"{width}x{height+100}+{parent.winfo_x() + 50}+{parent.winfo_y() + 50}")  # Увеличиваем высоту окна
         self.root.resizable(resizable[0], resizable[1])
         if icon:
             self.root.iconbitmap(icon)
 
-        self.var_elect = BooleanVar(value=0)
-        self.water_var = BooleanVar(value=0)
-        self.wastewater_var = BooleanVar(value=0)
-        self.gaz_var = BooleanVar(value=0)
-        self.transformation_ratio_var = BooleanVar(value=0)
+        # Ensure this window stays on top and modal
+        self.root.transient(parent)
+        self.root.grab_set()
+        print("Установлен grab_set()")  # Отладочный вывод
+        
+        # Create main frame with increased height
+        self.main_frame = ctk.CTkScrollableFrame(self.root, height=height)  # Устанавливаем высоту скроллируемого фрейма
+        self.main_frame.pack(fill=BOTH, expand=True, padx=20, pady=20)  # Увеличиваем отступы
 
-        self.var_entry = [
-            (self.var_elect, "Электроэнергия"),
-            (self.transformation_ratio_var, "Коэффициент трансформации"),
-            (self.water_var, "Вода"),
-            (self.wastewater_var, "Водоотведение"),
-            (self.gaz_var, "Газ"),
-                    ]
-        self.labels = {}
+        # Переменные для чекбоксов услуг
+        self.uses_electricity = BooleanVar(value=False)
+        self.uses_water = BooleanVar(value=False)
+        self.uses_wastewater = BooleanVar(value=False)
+        self.uses_gas = BooleanVar(value=False)
+        self.has_transformation_ratio = BooleanVar(value=False)
+
+        # Словарь для хранения полей ввода
         self.entries = {}
+        self.labels = {}
         self.name_entry = None
+        
+        # Флаг, указывающий, активно ли окно
+        self.is_active = True
+        self.parent = parent
 
-
-
+        # Draw widgets
         self.draw_abonent_widget()
-        self.grab_focus()
+        print("Виджеты отрисованы")  # Отладочный вывод
+        
+        # Set initial focus to name entry
+        self.name_entry.focus_set()
+        
+        # Настройка обработчиков событий
+        self.root.protocol("WM_DELETE_WINDOW", self.on_closing)
+        self.root.bind('<Destroy>', self.on_destroy)
+        print("Обработчики событий установлены")  # Отладочный вывод
 
-    # метод, который создает фокус на дочернем окне
+    def on_destroy(self, event):
+        """Обработчик уничтожения окна"""
+        print(f"on_destroy вызван для {event.widget}")  # Отладочный вывод
+        if event.widget == self.root:
+            print("Окно уничтожается")  # Отладочный вывод
+            self.is_active = False
+            try:
+                self.root.grab_release()
+                print("grab_release выполнен")  # Отладочный вывод
+            except Exception as e:
+                print(f"Ошибка при grab_release: {e}")  # Отладочный вывод
+
+    def on_closing(self):
+        """Обработчик закрытия окна"""
+        print("on_closing вызван")  # Отладочный вывод
+        if not self.is_active:
+            print("Окно уже не активно")  # Отладочный вывод
+            return
+            
+        self.is_active = False
+        try:
+            self.root.grab_release()
+            print("grab_release выполнен")  # Отладочный вывод
+        except Exception as e:
+            print(f"Ошибка при grab_release: {e}")  # Отладочный вывод
+            
+        self.root.destroy()
+        print("Окно уничтожено")  # Отладочный вывод
+        
+        # Восстанавливаем родительское окно
+        if self.parent:
+            self.parent.deiconify()
+            self.parent.lift()
+            self.parent.focus_force()
+            print("Родительское окно восстановлено")  # Отладочный вывод
+
     def grab_focus(self):
+        """Safely grab and manage window focus"""
+        if not self.is_active:
+            return
+            
+        try:
+            # Ensure parent is updated
+            self.parent.update_idletasks()
+            
+            # Try to grab focus
+            self.root.grab_set()
+            
+            # Make sure window is on top
+            self.root.lift()
+            
+            # Wait for window
+            self.root.wait_window()
+        except Exception as e:
+            print(f"Ошибка при установке фокуса: {e}")
+            # If focus grab fails, try to proceed normally
+            self.root.wait_window()
 
-        self.root.grab_set() # фокус на окнe
-        self.root.focus_set() # фокус на окнe
-        self.root.wait_window() # ждем закрытия окна
-
-    def creat_frame(self):
+    def create_frame(self):
         frame = ctk.CTkFrame(master=self.root, width=100, height=100)
-        frame.pack(side=BOTTOM, fill=X, padx=0, pady=50)
+        frame.pack(side=BOTTOM, fill=X, padx=10, pady=10)
         return frame
 
-
     def draw_abonent_widget(self):
-        ctk.CTkLabel(master=self.root, text="Введите наименование организации абонента").pack()
-        self.name_entry =  ctk.CTkEntry(master=self.root, width=250)
-        self.name_entry.pack()
-        ctk.CTkLabel(master=self.root,
-                     text="Выберите услуги которыми пользуется абонент \nи внесите первоначальные показания:").pack()
+        # Фрейм для названия организации
+        name_frame = ctk.CTkFrame(self.main_frame)
+        name_frame.pack(fill=X, pady=5)
+        
+        ctk.CTkLabel(name_frame, text="Введите наименование организации абонента").pack(pady=5)
+        self.name_entry = ctk.CTkEntry(name_frame, width=250)
+        self.name_entry.pack(pady=5)
+        
+        # Фрейм для выбора услуг
+        services_label_frame = ctk.CTkFrame(self.main_frame)
+        services_label_frame.pack(fill=X, pady=5)
+        
+        ctk.CTkLabel(services_label_frame, 
+                    text="Выберите услуги, которыми пользуется абонент:").pack(pady=5)
 
-        # Создаем CheckBox и связываем их с переменными
-        for var, text in self.var_entry:
-            ctk.CTkCheckBox(master=self.root, text=text, variable=var, onvalue=1, offvalue=0,
-                            command=lambda v=var, t=text: self.chek_chek_box(v, t)).pack(anchor= "w")
+        # Фрейм для чекбоксов услуг
+        services_frame = ctk.CTkFrame(self.main_frame)
+        services_frame.pack(fill=X, pady=5)
 
-        button_frame = self.creat_frame()
+        # Чекбоксы для выбора услуг
+        ctk.CTkCheckBox(services_frame, text="Электроэнергия", 
+                       variable=self.uses_electricity,
+                       command=lambda: self.toggle_service_entry("electricity")).pack(anchor=W, pady=2)
+        
+        ctk.CTkCheckBox(services_frame, text="Коэффициент трансформации", 
+                       variable=self.has_transformation_ratio,
+                       command=lambda: self.toggle_service_entry("transformation_ratio")).pack(anchor=W, pady=2)
+        
+        ctk.CTkCheckBox(services_frame, text="Вода", 
+                       variable=self.uses_water,
+                       command=lambda: self.toggle_service_entry("water")).pack(anchor=W, pady=2)
+        
+        ctk.CTkCheckBox(services_frame, text="Водоотведение", 
+                       variable=self.uses_wastewater,
+                       command=lambda: self.toggle_service_entry("wastewater")).pack(anchor=W, pady=2)
+        
+        ctk.CTkCheckBox(services_frame, text="Газ", 
+                       variable=self.uses_gas,
+                       command=lambda: self.toggle_service_entry("gas")).pack(anchor=W, pady=2)
 
-        button_save = ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=30, pady=5)
-        button_cancel = ctk.CTkButton(button_frame, text="Отмена", command=self.root.destroy).pack(side=LEFT, padx=30, pady=5)
+        # Фрейм для полей ввода начальных показаний
+        values_label_frame = ctk.CTkFrame(self.main_frame)
+        values_label_frame.pack(fill=X, pady=5)
+        
+        ctk.CTkLabel(values_label_frame, text="Начальные показания:").pack(pady=5)
 
+        self.values_frame = ctk.CTkFrame(self.main_frame)
+        self.values_frame.pack(fill=X, pady=5)
 
+        # Фрейм для кнопок
+        button_frame = ctk.CTkFrame(self.main_frame)
+        button_frame.pack(side=BOTTOM, fill=X, pady=10)
+        
+        ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=30, pady=5)
+        ctk.CTkButton(button_frame, text="Отмена", command=self.on_closing).pack(side=LEFT, padx=30, pady=5)
 
-    def chek_chek_box(self, var, text):
-        if var.get():  # Если CheckBox отмечен
-            if text not in self.entries:
+    def toggle_service_entry(self, service_type):
+        """Показывает или скрывает поле ввода для выбранной услуги"""
+        if not self.is_active:
+            return
 
-                self.label = ctk.CTkLabel(master=self.root, text=f'{text}')
-                self.label.pack()
-                self.labels[text] = self.label
-                    # Если entry для этого CheckBox еще не создан
-                entry = ctk.CTkEntry(master=self.root, width=250)
-                entry.pack()
-                self.entries[text] = entry  # Сохраняем entry в словаре
-        else:  # Если CheckBox не отмечен
-            if text in self.entries:  # Если entry для этого CheckBox существует
-                self.entries[text].destroy()  # Удаляем entry
-                del self.entries[text]  # Удаляем запись из словаря
-                if text in self.labels:
-                    self.labels[text].destroy()
-                    del self.labels[text]
+        service_labels = {
+            "electricity": "Электроэнергия",
+            "transformation_ratio": "Коэффициент трансформации",
+            "water": "Вода",
+            "wastewater": "Водоотведение",
+            "gas": "Газ"
+        }
+        
+        try:
+            if service_type in self.entries:
+                # Удаляем существующие поля
+                if service_type in self.labels:
+                    self.labels[service_type].destroy()
+                    del self.labels[service_type]
+                self.entries[service_type].destroy()
+                del self.entries[service_type]
+            else:
+                # Создаем новые поля
+                label = ctk.CTkLabel(self.values_frame, text=service_labels[service_type])
+                label.pack(pady=2)
+                self.labels[service_type] = label
+                
+                entry = ctk.CTkEntry(self.values_frame, width=250)
+                entry.pack(pady=2)
+                self.entries[service_type] = entry
+        except Exception as e:
+            print(f"Ошибка при переключении поля ввода: {e}")
 
-    def save_data(self): # Собираем данные из полей ввода
-        fulname = self.name_entry.get()
-        elect_value = self.entries.get("Электроэнергия", None)
-        transformation_ratio_value = self.entries.get("Коэффициент трансформации", None)
-        water_value = self.entries.get("Вода", None)
-        wastewater_value = self.entries.get("Водоотведение", None)
-        gaz_value = self.entries.get("Газ", None)
+    def get_entry_value(self, key, value_type=float):
+        """Безопасное получение значения из поля ввода"""
+        try:
+            if not self.is_active or key not in self.entries:
+                return None
+                
+            value = self.entries[key].get().strip()
+            if not value:
+                return None
+                
+            # Заменяем запятую на точку для корректной обработки чисел
+            if value_type == float:
+                value = value.replace(',', '.')
+                
+            return value_type(value)
+        except ValueError:
+            raise ValueError(f"Неверный формат данных в поле '{key}'. Ожидается число.")
+        except Exception as e:
+            print(f"Ошибка при получении значения поля: {e}")
+            return None
 
-        # Преобразуем значения в числа, если они существуют
-        elect_value = float(elect_value.get()) if elect_value else None
-        transformation_ratio_value = int(transformation_ratio_value.get()) if transformation_ratio_value else None
-        water_value = int(water_value.get()) if water_value else None
-        wastewater_value = int(wastewater_value.get()) if wastewater_value else None
-        gaz_value = int(gaz_value.get()) if gaz_value else None
+    def save_data(self):
+        if not self.is_active:
+            return
 
-        # Сохраняем данные в базу данных
-        db = SqliteDB()
-        db.create_table_abonent()
-        db.insert_data((fulname, elect_value, transformation_ratio_value, water_value, wastewater_value, gaz_value))
-        db.close_connection()
+        try:
+            # Получаем название организации
+            fulname = self.name_entry.get()
+            if not fulname:
+                CTkMessagebox(title="Ошибка", 
+                            message="Введите название организации")
+                return
 
-        # Закрываем окно после сохранения
+            # Безопасное получение значений из полей ввода
+            elect_value = self.get_entry_value("electricity") if self.uses_electricity.get() else None
+            transformation_ratio = self.get_entry_value("transformation_ratio", int) if self.has_transformation_ratio.get() else None
+            water_value = self.get_entry_value("water") if self.uses_water.get() else None
+            wastewater_value = self.get_entry_value("wastewater") if self.uses_wastewater.get() else None
+            gas_value = self.get_entry_value("gas") if self.uses_gas.get() else None
 
-        #CTkMessagebox.messagebox(title='Уведомление!', text='Данные успешно сохранены', sound='off',
-                                 # button_text='OK')
-        self.root.destroy()
+            # Получаем значения чекбоксов
+            uses_electricity = self.uses_electricity.get()
+            uses_water = self.uses_water.get()
+            uses_wastewater = self.uses_wastewater.get()
+            uses_gas = self.uses_gas.get()
+
+            print("\n=== Сохранение данных абонента ===")
+            print(f"Название: {fulname}")
+            print(f"Электроэнергия: {elect_value} (использует: {uses_electricity})")
+            print(f"Коэффициент трансформации: {transformation_ratio}")
+            print(f"Вода: {water_value} (использует: {uses_water})")
+            print(f"Водоотведение: {wastewater_value} (использует: {uses_wastewater})")
+            print(f"Газ: {gas_value} (использует: {uses_gas})")
+
+            # Проверяем, что хотя бы одна услуга выбрана
+            if not any([uses_electricity, uses_water, uses_wastewater, uses_gas]):
+                CTkMessagebox(title="Ошибка",
+                            message="Выберите хотя бы одну услугу")
+                return
+
+            # Сохраняем данные в базу
+            db = SqliteDB()
+            db.create_table_abonent()
+            data = (
+                fulname,
+                elect_value,
+                transformation_ratio,
+                water_value,
+                wastewater_value,
+                gas_value,
+                uses_electricity,
+                uses_water,
+                uses_wastewater,
+                uses_gas
+            )
+            print("\nДанные для сохранения:", data)
+            db.insert_data(data)
+            db.close_connection()
+
+            CTkMessagebox(title="Успех", 
+                         message="Данные успешно сохранены")
+            self.on_closing()
+
+        except ValueError as e:
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка в введенных данных: {str(e)}")
+        except Exception as e:
+            print(f"Ошибка при сохранении данных: {e}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Произошла ошибка при сохранении данных: {str(e)}")
 
 
 

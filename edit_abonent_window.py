@@ -1,7 +1,7 @@
 from pprint import pprint
 from tkinter import *
 import customtkinter as ctk
-from CustomTkinterMessagebox import CTkMessagebox
+from CTkMessagebox import CTkMessagebox
 
 
 

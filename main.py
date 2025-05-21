@@ -54,17 +54,57 @@ class Window:
 
     def create_child_window(self, width, height, title=None):
         """Создает окно добавления абонента"""
-        AddAbonentWindow(self.root, width, height, title="Добавить абонента")
-        self.refresh_data()
-        self.on_combobox_select()
+        print("Создание дочернего окна")  # Отладочный вывод
+        try:
+            # Create child window
+            child_window = AddAbonentWindow(self.root, width, height, title="Добавить абонента")
+            print("Дочернее окно создано")  # Отладочный вывод
+            
+            # Wait for child window to close
+            self.root.wait_window(child_window.root)
+            print("Ожидание закрытия дочернего окна завершено")  # Отладочный вывод
+            
+            # Refresh data after child window closes
+            self.refresh_data()
+            self.on_combobox_select()
+            print("Данные обновлены")  # Отладочный вывод
+            
+        except Exception as e:
+            print(f"Ошибка при создании окна: {e}")
+            # Make sure main window is visible in case of error
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
 
     def create_monthly_data_window(self, width, height, abonent_id, title=None):
         """Создает окно внесения месячных данных"""
-        MonthlyDataWindow(self.root, width, height, abonent_id, title=title)
+        # Disable main window interactions while child window is open
+        self.root.withdraw()
+        
+        try:
+            # Create and wait for child window
+            monthly_window = MonthlyDataWindow(self.root, width, height, abonent_id, title=title)
+            self.root.wait_window(monthly_window.root)
+        finally:
+            # Re-enable and show main window
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
 
     def create_consumption_history_window(self, width, height, abonent_id, title=None):
         """Создает окно истории потребления"""
-        ConsumptionHistoryWindow(self.root, width, height, abonent_id, title=title)
+        # Disable main window interactions while child window is open
+        self.root.withdraw()
+        
+        try:
+            # Create and wait for child window
+            history_window = ConsumptionHistoryWindow(self.root, width, height, abonent_id, title=title)
+            self.root.wait_window(history_window.root)
+        finally:
+            # Re-enable and show main window
+            self.root.deiconify()
+            self.root.lift()
+            self.root.focus_force()
 
     def draw_widget(self):
         """Создает элементы интерфейса"""
