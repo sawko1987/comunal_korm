@@ -2,11 +2,7 @@ from pprint import pprint
 from tkinter import *
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
-
-
-
 import tkinter.messagebox as messagebox
-import customtkinter as ctk
 from users_db import SqliteDB
 from tkinter import BooleanVar
 
@@ -32,84 +28,119 @@ class EditAbonentWindow:
         self.transformation_ratio_var = BooleanVar(value=abonent_data[3] is not None)
 
         self.var_entry = [
-            (self.var_elect, "Электроэнергия", abonent_data[2]),
-            (self.transformation_ratio_var, "Коэффициент трансформации", abonent_data[3]),
-            (self.water_var, "Вода", abonent_data[4]),
-            (self.wastewater_var, "Водоотведение", abonent_data[5]),
-            (self.gaz_var, "Газ", abonent_data[6]),
+            (self.var_elect, "⚡ Электроэнергия", abonent_data[2]),
+            (self.transformation_ratio_var, "📊 Коэффициент трансформации", abonent_data[3]),
+            (self.water_var, "💧 Вода", abonent_data[4]),
+            (self.wastewater_var, "🚰 Водоотведение", abonent_data[5]),
+            (self.gaz_var, "🔥 Газ", abonent_data[6]),
         ]
 
         self.labels = {}
         self.entries = {}
         self.name_entry = None
 
+        # Создаем основной контейнер
+        self.main_frame = ctk.CTkScrollableFrame(self.top)
+        self.main_frame.pack(fill=BOTH, expand=True, padx=20, pady=20)
+
         self.draw_abonent_widget()
         self.grab_focus()
-
-
 
     def grab_focus(self):
         self.top.grab_set()
         self.top.focus_set()
         self.top.wait_window()
 
-    def creat_frame(self):
-        frame = ctk.CTkFrame(master=self.top, width=100, height=100)
-        frame.pack(side=BOTTOM, fill=X, padx=0, pady=50)
-        return frame
-
     def draw_abonent_widget(self):
-        ctk.CTkLabel(master=self.top, text="Наименование организации абонента").pack()
+        # Заголовок
+        title_frame = ctk.CTkFrame(self.main_frame)
+        title_frame.pack(fill=X, pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text="Редактирование абонента",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
 
-        # Поле с текущим именем абонента
-        self.name_entry = ctk.CTkEntry(master=self.top, width=250)
+        # Фрейм для названия организации
+        name_frame = ctk.CTkFrame(self.main_frame)
+        name_frame.pack(fill=X, pady=10)
+        
+        ctk.CTkLabel(name_frame, 
+                    text="Наименование организации",
+                    font=("Roboto", 14)).pack(pady=5)
+        
+        self.name_entry = ctk.CTkEntry(name_frame, 
+                                     width=300,
+                                     height=35,
+                                     font=("Roboto", 12))
         self.name_entry.insert(0, self.abonent_data[1])
-        self.name_entry.pack()
+        self.name_entry.pack(pady=5)
 
-        ctk.CTkLabel(master=self.top,
-                     text="Измените услуги и показания абонента:").pack()
+        # Фрейм для услуг
+        services_frame = ctk.CTkFrame(self.main_frame)
+        services_frame.pack(fill=X, pady=10)
+        
+        ctk.CTkLabel(services_frame, 
+                    text="Услуги и показания",
+                    font=("Roboto", 14)).pack(pady=5)
 
         # Создаем CheckBox и Entry для каждого параметра
         for var, text, value in self.var_entry:
+            service_frame = ctk.CTkFrame(services_frame)
+            service_frame.pack(fill=X, pady=5)
+            
             # Создаем чекбокс
-            ctk.CTkCheckBox(master=self.top, text=text, variable=var, onvalue=1, offvalue=0,
-                            command=lambda v=var, t=text, val=value: self.chek_chek_box(v, t, val)).pack(anchor="w")
+            ctk.CTkCheckBox(service_frame, 
+                          text=text,
+                          font=("Roboto", 12),
+                          variable=var,
+                          onvalue=1,
+                          offvalue=0,
+                          command=lambda v=var, t=text, val=value: self.chek_chek_box(v, t, val)).pack(side=LEFT, padx=5)
 
             # Если значение было, сразу создаем поле ввода
             if var.get():
-                self.label = ctk.CTkLabel(master=self.top, text=f'{text}')
-                self.label.pack()
-                self.labels[text] = self.label
-
-                entry = ctk.CTkEntry(master=self.top, width=250)
+                entry = ctk.CTkEntry(service_frame, 
+                                   width=200,
+                                   height=35,
+                                   font=("Roboto", 12))
                 if value is not None:
                     entry.insert(0, str(value))
-                entry.pack()
+                entry.pack(side=LEFT, padx=5)
                 self.entries[text] = entry
 
-        button_frame = self.creat_frame()
-        ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=30, pady=5)
-        ctk.CTkButton(button_frame, text="Отмена", command=self.top.destroy).pack(side=LEFT, padx=30, pady=5)
+        # Фрейм для кнопок
+        button_frame = ctk.CTkFrame(self.main_frame)
+        button_frame.pack(side=BOTTOM, fill=X, pady=20)
+        
+        # Кнопки с современным дизайном
+        ctk.CTkButton(button_frame, 
+                     text="💾 Сохранить",
+                     font=("Roboto", 12),
+                     height=40,
+                     command=self.save_data).pack(side=LEFT, padx=20, pady=5)
+        
+        ctk.CTkButton(button_frame, 
+                     text="❌ Отмена",
+                     font=("Roboto", 12),
+                     height=40,
+                     fg_color="transparent",
+                     border_width=2,
+                     command=self.top.destroy).pack(side=LEFT, padx=20, pady=5)
 
     def chek_chek_box(self, var, text, default_value=None):
         if var.get():  # Если CheckBox отмечен
             if text not in self.entries:
-                self.label = ctk.CTkLabel(master=self.top, text=f'{text}')
-                self.label.pack()
-                self.labels[text] = self.label
-
-                entry = ctk.CTkEntry(master=self.top, width=250)
+                entry = ctk.CTkEntry(self.main_frame, 
+                                   width=200,
+                                   height=35,
+                                   font=("Roboto", 12))
                 if default_value is not None:
                     entry.insert(0, str(default_value))
-                entry.pack()
+                entry.pack(pady=5)
                 self.entries[text] = entry
         else:  # Если CheckBox не отмечен
             if text in self.entries:
                 self.entries[text].destroy()
                 del self.entries[text]
-                if text in self.labels:
-                    self.labels[text].destroy()
-                    del self.labels[text]
 
     def save_data(self):
         """Сохраняет измененные данные абонента"""
@@ -117,7 +148,9 @@ class EditAbonentWindow:
             # Собираем данные из полей ввода
             fulname = self.name_entry.get().strip()
             if not fulname:
-                messagebox.showwarning("Предупреждение", "Название организации не может быть пустым")
+                CTkMessagebox(title="Предупреждение", 
+                            message="Название организации не может быть пустым",
+                            icon="warning")
                 return
 
             # Получаем значения из полей, если они существуют
@@ -142,7 +175,9 @@ class EditAbonentWindow:
                 wastewater_value = int(wastewater_value) if wastewater_value is not None else None
                 gaz_value = int(gaz_value) if gaz_value is not None else None
             except ValueError as e:
-                messagebox.showerror("Ошибка", f"Некорректные числовые значения: {str(e)}")
+                CTkMessagebox(title="Ошибка", 
+                            message=f"Некорректные числовые значения: {str(e)}",
+                            icon="cancel")
                 return
 
             # Обновляем данные в базе данных
@@ -150,14 +185,22 @@ class EditAbonentWindow:
             try:
                 if db.update_data(self.abonent_id, fulname, elect_value, transformation_ratio_value,
                                   water_value, wastewater_value, gaz_value):
-                    messagebox.showinfo("Успех", "Данные успешно сохранены")
+                    CTkMessagebox(title="Успех", 
+                                message="Данные успешно сохранены",
+                                icon="check")
                     self.top.destroy()
                 else:
-                    messagebox.showerror("Ошибка", "Не удалось сохранить данные")
+                    CTkMessagebox(title="Ошибка", 
+                                message="Не удалось сохранить данные",
+                                icon="cancel")
             except Exception as db_error:
-                messagebox.showerror("Ошибка базы данных", f"Ошибка при сохранении: {str(db_error)}")
+                CTkMessagebox(title="Ошибка базы данных", 
+                            message=f"Ошибка при сохранении: {str(db_error)}",
+                            icon="cancel")
             finally:
                 db.close_connection()
 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при сохранении данных: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при сохранении данных: {str(e)}",
+                         icon="cancel")

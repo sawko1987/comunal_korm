@@ -7,6 +7,9 @@ from reportlab.pdfgen import canvas
 import os
 from datetime import datetime
 import subprocess
+from tkinter import filedialog
+import calendar
+import json
 
 
 class ConsumptionHistoryWindow:
@@ -23,50 +26,117 @@ class ConsumptionHistoryWindow:
         self.last_pdf_path = None  # Будем хранить путь к последнему созданному PDF
         print(f"Тип abonent_id: {type(self.abonent_id)}, значение: {self.abonent_id}")
 
-        # Поля для выбора расчетного периода
-        self.month_label = ctk.CTkLabel(self.root, text="Расчетный месяц:")
-        self.month_label.pack(pady=5)
+        # Создаем основной контейнер
+        self.main_frame = ctk.CTkScrollableFrame(self.root)
+        self.main_frame.pack(fill=ctk.BOTH, expand=True, padx=20, pady=20)
 
-        # Выпадающий список для месяцев
+        # Заголовок
+        title_frame = ctk.CTkFrame(self.main_frame)
+        title_frame.pack(fill=ctk.X, pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text="История потребления",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
+
+        # Фрейм для выбора периода
+        period_frame = ctk.CTkFrame(self.main_frame)
+        period_frame.pack(fill=ctk.X, pady=10)
+
+        # Месяц
+        month_frame = ctk.CTkFrame(period_frame)
+        month_frame.pack(side=ctk.LEFT, padx=10, expand=True)
+        
+        ctk.CTkLabel(month_frame, 
+                    text="📅 Месяц:",
+                    font=("Roboto", 14)).pack(pady=5)
+
         self.months = ["Январь", "Февраль", "Март", "Апрель", "Май", "Июнь",
-                       "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
+                      "Июль", "Август", "Сентябрь", "Октябрь", "Ноябрь", "Декабрь"]
         self.month_var = ctk.StringVar(value=self.months[datetime.now().month - 1])
-        self.month_combobox = ctk.CTkComboBox(self.root, values=self.months, variable=self.month_var)
+        self.month_combobox = ctk.CTkComboBox(month_frame, 
+                                            values=self.months,
+                                            variable=self.month_var,
+                                            font=("Roboto", 12),
+                                            height=35)
         self.month_combobox.pack(pady=5)
 
-        self.year_label = ctk.CTkLabel(self.root, text="Год:")
-        self.year_label.pack(pady=5)
-        self.year_entry = ctk.CTkEntry(self.root)
+        # Год
+        year_frame = ctk.CTkFrame(period_frame)
+        year_frame.pack(side=ctk.LEFT, padx=10, expand=True)
+        
+        ctk.CTkLabel(year_frame, 
+                    text="📅 Год:",
+                    font=("Roboto", 14)).pack(pady=5)
+        
+        self.year_entry = ctk.CTkEntry(year_frame,
+                                     width=100,
+                                     height=35,
+                                     font=("Roboto", 12))
         self.year_entry.pack(pady=5)
-        self.year_entry.insert(0, str(datetime.now().year))  # Текущий год по умолчанию
+        self.year_entry.insert(0, str(datetime.now().year))
 
-        # Кнопка для загрузки данных
-        self.load_button = ctk.CTkButton(self.root, text="Загрузить данные", command=self.load_data)
-        self.load_button.pack(pady=20)
+        # Кнопки управления
+        buttons_frame = ctk.CTkFrame(self.main_frame)
+        buttons_frame.pack(fill=ctk.X, pady=10)
 
-        # Кнопка для расчета данных
-        self.calc_button = ctk.CTkButton(self.root, text="Рассчитать потребление", command=self.calculate_consumption,
-                                         state='disabled')
-        self.calc_button.pack(pady=10)
+        self.load_button = ctk.CTkButton(buttons_frame, 
+                                       text="📊 Загрузить данные",
+                                       font=("Roboto", 12),
+                                       height=40,
+                                       command=self.load_data)
+        self.load_button.pack(side=ctk.LEFT, padx=10, pady=5)
 
-        # Кнопка для генерации реестра
-        self.generate_registry_button = ctk.CTkButton(self.root, text="Создать реестр", command=self.generate_registry,
-                                                      state='disabled')
-        self.generate_registry_button.pack(pady=10)
+        self.calc_button = ctk.CTkButton(buttons_frame, 
+                                       text="🧮 Рассчитать потребление",
+                                       font=("Roboto", 12),
+                                       height=40,
+                                       state='disabled',
+                                       command=self.calculate_consumption)
+        self.calc_button.pack(side=ctk.LEFT, padx=10, pady=5)
 
-        # Кнопка для открытия Word (изначально скрыта)
-        self.open_word_button = ctk.CTkButton(self.root, text="Открыть Word", command=self.open_word,
-                                              state='disabled', fg_color='green')
-        self.open_word_button.pack(pady=5)
+        self.generate_registry_button = ctk.CTkButton(buttons_frame, 
+                                                    text="📝 Создать реестр",
+                                                    font=("Roboto", 12),
+                                                    height=40,
+                                                    state='disabled',
+                                                    command=self.generate_registry)
+        self.generate_registry_button.pack(side=ctk.LEFT, padx=10, pady=5)
 
+        self.open_word_button = ctk.CTkButton(buttons_frame, 
+                                            text="📄 Открыть Word",
+                                            font=("Roboto", 12),
+                                            height=40,
+                                            state='disabled',
+                                            fg_color='green',
+                                            command=self.open_word)
+        self.open_word_button.pack(side=ctk.LEFT, padx=10, pady=5)
 
-        # Таблица для отображения данных
-        self.table = ctk.CTkTextbox(self.root, width=550, height=200)
-        self.table.pack(pady=10)
+        # Таблица данных
+        table_frame = ctk.CTkFrame(self.main_frame)
+        table_frame.pack(fill=ctk.BOTH, expand=True, pady=10)
+        
+        ctk.CTkLabel(table_frame, 
+                    text="Данные за период",
+                    font=("Roboto", 14)).pack(pady=5)
+        
+        self.table = ctk.CTkTextbox(table_frame, 
+                                  width=550,
+                                  height=200,
+                                  font=("Roboto", 12))
+        self.table.pack(pady=5, padx=10, fill=ctk.BOTH, expand=True)
 
-        # Поле для вывода расчетов
-        self.calculation_result = ctk.CTkTextbox(self.root, width=550, height=200)
-        self.calculation_result.pack(pady=10)
+        # Результаты расчетов
+        calc_frame = ctk.CTkFrame(self.main_frame)
+        calc_frame.pack(fill=ctk.BOTH, expand=True, pady=10)
+        
+        ctk.CTkLabel(calc_frame, 
+                    text="Результаты расчетов",
+                    font=("Roboto", 14)).pack(pady=5)
+        
+        self.calculation_result = ctk.CTkTextbox(calc_frame, 
+                                               width=550,
+                                               height=200,
+                                               font=("Roboto", 12))
+        self.calculation_result.pack(pady=5, padx=10, fill=ctk.BOTH, expand=True)
 
         self.root.grab_set()
         self.root.focus_set()
@@ -500,20 +570,50 @@ class ConsumptionHistoryWindow:
                     doc.add_paragraph()
 
                 # Подписи
-                doc.add_paragraph('Бухгалтер Щекина Л.Н.\t/____________/', style='Normal')
-                doc.add_paragraph('Главный инженер Бирюков А.С. /____________/', style='Normal')
+                # Загружаем настройки
+                settings_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), 'data', 'settings.json')
+                try:
+                    if os.path.exists(settings_file):
+                        with open(settings_file, 'r', encoding='utf-8') as f:
+                            settings = json.load(f)
+                    else:
+                        settings = {}
+                except Exception as e:
+                    print(f"Ошибка при загрузке настроек: {e}")
+                    settings = {}
+                
+                # Добавляем подписи из настроек
+                signatures = settings.get("signatures", [])
+                for signature in signatures:
+                    position = signature.get("position", "")
+                    name = signature.get("name", "")
+                    if position and name:
+                        doc.add_paragraph(f'{position} {name}\t/____________/', style='Normal')
+                
                 doc.add_paragraph('Согласовано:', style='Normal')
                 doc.add_paragraph('Арендатор ___________________/________________/', style='Normal')
 
                 # Сохраняем документ
-                folder_path = r"C:\Реестры по абонентам"
-                os.makedirs(folder_path, exist_ok=True)
+                # Получаем название месяца в именительном падеже
+                month_names = {
+                    1: "январь", 2: "февраль", 3: "март", 4: "апрель",
+                    5: "май", 6: "июнь", 7: "июль", 8: "август",
+                    9: "сентябрь", 10: "октябрь", 11: "ноябрь", 12: "декабрь"
+                }
+                month_folder = month_names[month]
+                
+                # Получаем путь сохранения из настроек
+                save_path = settings.get("save_path", r"C:\Реестры по абонентам")
+                
+                # Создаем подпапку с названием месяца
+                month_folder_path = os.path.join(save_path, month_folder)
+                os.makedirs(month_folder_path, exist_ok=True)
 
                 # Создаем имя файла без запрещенных символов
                 import re
                 safe_name = re.sub(r'[\\/*?:"<>|]', "", fulname)
                 file_name = f"{safe_name}_{month_name}_{year}_реестр.docx"
-                file_path = os.path.join(folder_path, file_name)
+                file_path = os.path.join(month_folder_path, file_name)
                 doc.save(file_path)
 
                 self.calculation_result.delete("1.0", "end")

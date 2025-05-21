@@ -1,14 +1,17 @@
 import os
 from edit_abonent_window import EditAbonentWindow
 import customtkinter as ctk
-import tkinter.messagebox as messagebox
+from CTkMessagebox import CTkMessagebox
+from datetime import datetime
 
 from HistoryWindow import ConsumptionHistoryWindow
 from add_abonent_window import AddAbonentWindow
 from monthly_data_window import MonthlyDataWindow
 from users_db import SqliteDB
 
-
+# Настройка темы приложения
+ctk.set_appearance_mode("dark")
+ctk.set_default_color_theme("blue")
 
 class Window:
     def __init__(self, width, height, title="Учет коммунальных услуг АО_Корммаш",
@@ -108,9 +111,13 @@ class Window:
 
     def draw_widget(self):
         """Создает элементы интерфейса"""
+        # Создание основного контейнера
+        main_container = ctk.CTkFrame(self.root)
+        main_container.pack(fill="both", expand=True, padx=20, pady=20)
+
         # Создание контейнера с вкладками
-        self.tab_control = ctk.CTkTabview(self.root, width=150)
-        self.tab_control.pack(side='left', fill='y', padx=(0, 10), pady=10)
+        self.tab_control = ctk.CTkTabview(main_container, width=200)
+        self.tab_control.pack(side='left', fill='y', padx=(0, 20))
 
         # Добавление вкладок
         self.tab_control.add("Абоненты")
@@ -123,40 +130,76 @@ class Window:
         tab3 = self.tab_control.tab("Настройки")
 
         # Вкладка "Абоненты"
-        ctk.CTkLabel(tab1, text="Управление абонентами").pack(pady=10)
+        title_frame = ctk.CTkFrame(tab1)
+        title_frame.pack(fill="x", padx=10, pady=10)
+        ctk.CTkLabel(title_frame, text="Управление абонентами", 
+                    font=("Roboto", 16, "bold")).pack(pady=5)
 
         # Кнопки управления абонентами
-        ctk.CTkButton(tab1, text="Добавить абонента",
-                      command=lambda: self.create_child_window(400, 650)).pack(pady=5)
-        ctk.CTkButton(tab1, text="Удалить абонента",
-                      command=self.delete_abonent).pack(pady=5)
-        # В методе draw_widget замените строку с кнопкой:
+        buttons_frame = ctk.CTkFrame(tab1)
+        buttons_frame.pack(fill="x", padx=10, pady=5)
 
-        ctk.CTkButton(tab1, text="Редактировать абонента", command=self.edit_abonent).pack(pady=5)
+        ctk.CTkButton(buttons_frame, text="Добавить абонента",
+                     command=lambda: self.create_child_window(400, 650),
+                     height=35).pack(fill="x", pady=5)
+        
+        ctk.CTkButton(buttons_frame, text="Редактировать абонента",
+                     command=self.edit_abonent,
+                     height=35).pack(fill="x", pady=5)
+        
+        ctk.CTkButton(buttons_frame, text="Удалить абонента",
+                     command=self.delete_abonent,
+                     height=35).pack(fill="x", pady=5)
 
         # Выбор абонента
-        ctk.CTkLabel(tab1, text="Выберите абонента:").pack(pady=5)
-        self.combobox = ctk.CTkComboBox(tab1, width=250)
-        self.combobox.pack()
+        select_frame = ctk.CTkFrame(tab1)
+        select_frame.pack(fill="x", padx=10, pady=10)
+        
+        ctk.CTkLabel(select_frame, text="Выберите абонента:",
+                    font=("Roboto", 12)).pack(pady=5)
+        
+        self.combobox = ctk.CTkComboBox(select_frame, width=250,
+                                      font=("Roboto", 12))
+        self.combobox.pack(pady=5)
         self.combobox.configure(command=self.on_combobox_select_callback)
 
         # Кнопки работы с данными
-        ctk.CTkButton(tab1, text="Внести показания",
-                      command=self.run_monthly_data_window).pack(pady=10)
-        ctk.CTkButton(tab1, text="История потребления",
-                      command=self.run_consumption_history_window).pack(pady=10)
+        data_frame = ctk.CTkFrame(tab1)
+        data_frame.pack(fill="x", padx=10, pady=10)
+        
+        ctk.CTkButton(data_frame, text="Внести показания",
+                     command=self.run_monthly_data_window,
+                     height=35).pack(fill="x", pady=5)
+        
+        ctk.CTkButton(data_frame, text="История потребления",
+                     command=self.run_consumption_history_window,
+                     height=35).pack(fill="x", pady=5)
 
         # Вкладка "Настройки"
-        ctk.CTkLabel(tab3, text="Настройки программы").pack(pady=10)
+        settings_frame = ctk.CTkFrame(tab3)
+        settings_frame.pack(fill="x", padx=10, pady=10)
         
-        # Кнопка настроек
-        ctk.CTkButton(tab3, text="Открыть настройки",
-                      command=self.open_settings_window).pack(pady=5)
+        ctk.CTkLabel(settings_frame, text="Настройки программы",
+                    font=("Roboto", 16, "bold")).pack(pady=5)
+        
+        ctk.CTkButton(settings_frame, text="Открыть настройки",
+                     command=self.open_settings_window,
+                     height=35).pack(fill="x", pady=5)
+
+        # Информационная панель
+        info_frame = ctk.CTkFrame(main_container)
+        info_frame.pack(side='right', fill="both", expand=True)
+
+        # Заголовок информационной панели
+        ctk.CTkLabel(info_frame, text="Информация об абоненте",
+                    font=("Roboto", 16, "bold")).pack(pady=10)
 
         # Поле для отображения информации об абоненте
-        self.selected_abonent_info = ctk.CTkTextbox(self.root, width=400, height=200,
-                                                    font=("Arial", 14), wrap="word")
-        self.selected_abonent_info.pack(pady=20, padx=20, fill="both", expand=True)
+        self.selected_abonent_info = ctk.CTkTextbox(info_frame,
+                                                  font=("Roboto", 12),
+                                                  wrap="word")
+        self.selected_abonent_info.pack(fill="both", expand=True,
+                                      padx=10, pady=10)
 
         # Обновляем данные в интерфейсе
         self.update_combobox()
@@ -184,7 +227,6 @@ class Window:
 
     def on_combobox_select(self, event=None):
         """Обрабатывает выбор абонента из списка"""
-        print("Событие выбора абонента сработало!")  # Отладочный вывод
         try:
             selected_name = self.combobox.get()
             if not selected_name:
@@ -194,7 +236,7 @@ class Window:
             self.selected_abonent_info.delete("1.0", "end")
 
             # Загружаем свежие данные из БД
-            self.list_abonent = self.load_abonents()  # Обновляем список абонентов
+            self.list_abonent = self.load_abonents()
 
             # Находим выбранного абонента
             selected_abonent = next((abonent for abonent in self.list_abonent
@@ -206,12 +248,17 @@ class Window:
 
             # Основная информация об абоненте
             info = (
-                f"Название: {selected_abonent[1]}\n\n"
-                f"Электроэнергия: {selected_abonent[2] or 'нет данных'}\n"
-                f"Коэффициент трансформации: {selected_abonent[3] or 'нет данных'}\n"
-                f"Вода: {selected_abonent[4] or 'нет данных'}\n"
-                f"Водоотведение: {selected_abonent[5] or 'нет данных'}\n"
-                f"Газ: {selected_abonent[6] or 'нет данных'}\n\n"
+                f"📋 ОСНОВНАЯ ИНФОРМАЦИЯ\n"
+                f"{'=' * 40}\n"
+                f"🏢 Название: {selected_abonent[1]}\n\n"
+                f"⚡ Электроэнергия:\n"
+                f"   • Номер счетчика: {selected_abonent[2] or 'нет данных'}\n"
+                f"   • Коэффициент трансформации: {selected_abonent[3] or 'нет данных'}\n\n"
+                f"💧 Водоснабжение:\n"
+                f"   • Номер счетчика: {selected_abonent[4] or 'нет данных'}\n"
+                f"   • Водоотведение: {selected_abonent[5] or 'нет данных'}\n\n"
+                f"🔥 Газоснабжение:\n"
+                f"   • Номер счетчика: {selected_abonent[6] or 'нет данных'}\n\n"
             )
 
             # Добавляем информацию о последних месяцах с данными
@@ -220,30 +267,29 @@ class Window:
                 try:
                     last_months_data = self.db.get_last_months_data(abonent_id)
                     if last_months_data:
-                        info += "Последние внесенные данные:\n"
-                        info += "-" * 30 + "\n"
+                        info += f"\n📊 ПОСЛЕДНИЕ ПОКАЗАНИЯ\n{'=' * 40}\n"
 
                         for month_data in last_months_data:
                             month, year, electricity, water, wastewater, gas = month_data
                             info += (
-                                    f"Месяц: {self.format_month(month)} {year}\n"
-                                    f"Электричество: {electricity or 'нет данных'}\n"
-                                    f"Вода: {water or 'нет данных'}\n"
-                                    f"Водоотведение: {wastewater or 'нет данных'}\n"
-                                    f"Газ: {gas or 'нет данных'}\n"
-                                    + "-" * 30 + "\n"
+                                f"📅 {self.format_month(month)} {year}\n"
+                                f"   • Электричество: {electricity or 'нет данных'}\n"
+                                f"   • Вода: {water or 'нет данных'}\n"
+                                f"   • Водоотведение: {wastewater or 'нет данных'}\n"
+                                f"   • Газ: {gas or 'нет данных'}\n"
+                                f"{'-' * 40}\n"
                             )
                     else:
-                        info += "Нет данных о потреблении\n"
+                        info += "\n⚠️ Нет данных о потреблении\n"
                 except Exception as db_error:
                     print(f"Ошибка при получении данных: {db_error}")
-                    info += "Ошибка при загрузке данных\n"
+                    info += "\n❌ Ошибка при загрузке данных\n"
 
             self.selected_abonent_info.insert("1.0", info)
 
         except Exception as e:
             print(f"Ошибка при обработке выбора абонента: {e}")
-            self.selected_abonent_info.insert("1.0", f"Ошибка: {str(e)}")
+            self.selected_abonent_info.insert("1.0", f"❌ Ошибка: {str(e)}")
 
     def on_combobox_select_callback(self, choice):
         """Обработчик выбора в комбобоксе"""
@@ -254,20 +300,27 @@ class Window:
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                messagebox.showwarning("Предупреждение", "Не выбран абонент для удаления")
+                CTkMessagebox(title="Предупреждение", 
+                            message="Не выбран абонент для удаления",
+                            icon="warning")
                 return
 
-            confirm = messagebox.askyesno(
-                "Подтверждение",
-                f"Вы уверены, что хотите удалить абонента '{selected_name}'?"
-            )
-
-            if confirm:
+            confirm = CTkMessagebox(title="Подтверждение",
+                                  message=f"Вы уверены, что хотите удалить абонента '{selected_name}'?",
+                                  icon="question",
+                                  option_1="Да",
+                                  option_2="Нет")
+            
+            if confirm.get() == "Да":
                 self.db.delete_data(selected_name)
                 self.refresh_data()
-                messagebox.showinfo("Успех", f"Абонент '{selected_name}' удален")
+                CTkMessagebox(title="Успех", 
+                            message=f"Абонент '{selected_name}' удален",
+                            icon="check")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при удалении абонента: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при удалении абонента: {str(e)}",
+                         icon="cancel")
         self.on_combobox_select()
 
     def refresh_data(self):
@@ -296,14 +349,18 @@ class Window:
                 self.selected_abonent_info.insert("1.0", "Нет доступных абонентов")
 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при обновлении данных: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при обновлении данных: {str(e)}",
+                         icon="cancel")
 
     def run_monthly_data_window(self):
         """Открывает окно внесения месячных данных"""
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                messagebox.showwarning("Предупреждение", "Сначала выберите абонента")
+                CTkMessagebox(title="Предупреждение", 
+                            message="Сначала выберите абонента",
+                            icon="warning")
                 return
 
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
@@ -315,26 +372,36 @@ class Window:
                 self.refresh_data()
                 self.on_combobox_select()
             else:
-                messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
+                CTkMessagebox(title="Ошибка", 
+                            message="Не удалось определить ID абонента",
+                            icon="cancel")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при открытии окна данных: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при открытии окна данных: {str(e)}",
+                         icon="cancel")
 
     def edit_abonent(self):
         """Открывает окно редактирования абонента"""
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                messagebox.showwarning("Предупреждение", "Не выбран абонент для редактирования")
+                CTkMessagebox(title="Предупреждение", 
+                            message="Не выбран абонент для редактирования",
+                            icon="warning")
                 return
 
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
             if not abonent_id:
-                messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
+                CTkMessagebox(title="Ошибка", 
+                            message="Не удалось определить ID абонента",
+                            icon="cancel")
                 return
 
             abonent_data = self.db.get_abonent_by_id(abonent_id)
             if not abonent_data:
-                messagebox.showerror("Ошибка", "Не удалось загрузить данные абонента")
+                CTkMessagebox(title="Ошибка", 
+                            message="Не удалось загрузить данные абонента",
+                            icon="cancel")
                 return
 
             # Создаем окно редактирования и ждем его закрытия
@@ -346,23 +413,31 @@ class Window:
             self.on_combobox_select()  # Обновляем информацию
 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при редактировании абонента: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при редактировании абонента: {str(e)}",
+                         icon="cancel")
 
     def run_consumption_history_window(self):
         """Открывает окно истории потребления"""
         try:
             selected_name = self.combobox.get()
             if not selected_name:
-                messagebox.showwarning("Предупреждение", "Сначала выберите абонента")
+                CTkMessagebox(title="Предупреждение", 
+                            message="Сначала выберите абонента",
+                            icon="warning")
                 return
 
             abonent_id = self.db.get_abonent_id_by_name(selected_name)
             if abonent_id:
                 self.create_consumption_history_window(900, 700, abonent_id)
             else:
-                messagebox.showerror("Ошибка", "Не удалось определить ID абонента")
+                CTkMessagebox(title="Ошибка", 
+                            message="Не удалось определить ID абонента",
+                            icon="cancel")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при открытии окна истории: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при открытии окна истории: {str(e)}",
+                         icon="cancel")
 
     def open_settings_window(self):
         """Открывает окно настроек"""
@@ -371,7 +446,9 @@ class Window:
             settings_window = SettingsWindow(self.root, 400, 500)
             settings_window.root.wait_window()  # Ждем закрытия окна
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при открытии окна настроек: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при открытии окна настроек: {str(e)}",
+                         icon="cancel")
 
     def run(self):
         """Запускает главное окно"""
@@ -404,4 +481,6 @@ if __name__ == "__main__":
         app.run()
     except Exception as e:
         print(f"Критическая ошибка при запуске приложения: {e}")
-        messagebox.showerror("Ошибка", f"Не удалось запустить приложение: {str(e)}")
+        CTkMessagebox(title="Ошибка", 
+                     message=f"Не удалось запустить приложение: {str(e)}",
+                     icon="cancel")

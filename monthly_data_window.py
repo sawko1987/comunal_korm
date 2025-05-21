@@ -3,7 +3,7 @@ import tkinter.messagebox as messagebox
 import customtkinter as ctk
 from CTkMessagebox import CTkMessagebox
 import statistics
-
+from datetime import datetime
 import users_db
 from users_db import SqliteDB
 
@@ -11,7 +11,7 @@ class EditMonthlyDataWindow:
     def __init__(self, parent, abonent_id, month, year, data, on_save_callback):
         self.root = ctk.CTkToplevel(parent)
         self.root.title("Редактирование показаний")
-        self.root.geometry("400x500")
+        self.root.geometry("500x600")
         
         self.abonent_id = abonent_id
         self.month = month
@@ -25,9 +25,15 @@ class EditMonthlyDataWindow:
         db.close_connection()
         
         if not self.abonent_data:
-            messagebox.showerror("Ошибка", "Не удалось загрузить данные абонента")
+            CTkMessagebox(title="Ошибка", 
+                         message="Не удалось загрузить данные абонента",
+                         icon="cancel")
             self.root.destroy()
             return
+        
+        # Создаем основной контейнер
+        self.main_frame = ctk.CTkScrollableFrame(self.root)
+        self.main_frame.pack(fill=BOTH, expand=True, padx=20, pady=20)
         
         self.draw_widgets()
         self.grab_focus()
@@ -39,39 +45,60 @@ class EditMonthlyDataWindow:
         
     def draw_widgets(self):
         # Заголовок
-        ctk.CTkLabel(self.root, text=f"Редактирование показаний за {self.month}/{self.year}").pack(pady=10)
+        title_frame = ctk.CTkFrame(self.main_frame)
+        title_frame.pack(fill=X, pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text=f"Редактирование показаний за {self.month}/{self.year}",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
         
         # Поля для редактирования только выбранных услуг
         self.entries = {}
         
         if self.abonent_data[7]:  # uses_electricity
-            self.entries['electricity'] = self.create_entry_field("Электроэнергия", self.data.get('electricity'))
+            self.entries['electricity'] = self.create_entry_field("⚡ Электроэнергия", self.data.get('electricity'))
             
         if self.abonent_data[8]:  # uses_water
-            self.entries['water'] = self.create_entry_field("Вода", self.data.get('water'))
+            self.entries['water'] = self.create_entry_field("💧 Вода", self.data.get('water'))
             
         if self.abonent_data[9]:  # uses_wastewater
-            self.entries['wastewater'] = self.create_entry_field("Водоотведение", self.data.get('wastewater'))
+            self.entries['wastewater'] = self.create_entry_field("🚰 Водоотведение", self.data.get('wastewater'))
             
         if self.abonent_data[10]:  # uses_gas
-            self.entries['gas'] = self.create_entry_field("Газ", self.data.get('gas'))
+            self.entries['gas'] = self.create_entry_field("🔥 Газ", self.data.get('gas'))
         
         # Кнопки
-        button_frame = ctk.CTkFrame(self.root)
-        button_frame.pack(side=BOTTOM, fill=X, padx=20, pady=20)
+        button_frame = ctk.CTkFrame(self.main_frame)
+        button_frame.pack(side=BOTTOM, fill=X, pady=20)
         
-        ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=10)
-        ctk.CTkButton(button_frame, text="Отмена", command=self.root.destroy).pack(side=RIGHT, padx=10)
+        ctk.CTkButton(button_frame, 
+                     text="💾 Сохранить",
+                     font=("Roboto", 12),
+                     height=40,
+                     command=self.save_data).pack(side=LEFT, padx=20, pady=5)
+        
+        ctk.CTkButton(button_frame, 
+                     text="❌ Отмена",
+                     font=("Roboto", 12),
+                     height=40,
+                     fg_color="transparent",
+                     border_width=2,
+                     command=self.root.destroy).pack(side=LEFT, padx=20, pady=5)
         
     def create_entry_field(self, label_text, value):
-        frame = ctk.CTkFrame(self.root)
-        frame.pack(fill=X, padx=20, pady=5)
+        frame = ctk.CTkFrame(self.main_frame)
+        frame.pack(fill=X, pady=10)
         
-        ctk.CTkLabel(frame, text=label_text).pack(side=LEFT)
-        entry = ctk.CTkEntry(frame)
+        ctk.CTkLabel(frame, 
+                    text=label_text,
+                    font=("Roboto", 14)).pack(side=LEFT, padx=10)
+        
+        entry = ctk.CTkEntry(frame,
+                           width=200,
+                           height=35,
+                           font=("Roboto", 12))
         if value is not None:
             entry.insert(0, str(value))
-        entry.pack(side=RIGHT)
+        entry.pack(side=RIGHT, padx=10)
         return entry
         
     def save_data(self):
@@ -93,21 +120,31 @@ class EditMonthlyDataWindow:
                 self.on_save_callback()
                 
             self.root.destroy()
-            messagebox.showinfo("Успех", "Данные успешно обновлены")
+            CTkMessagebox(title="Успех", 
+                         message="Данные успешно обновлены",
+                         icon="check")
             
         except ValueError:
-            messagebox.showerror("Ошибка", "Некорректные данные. Убедитесь, что все поля заполнены числами.")
+            CTkMessagebox(title="Ошибка", 
+                         message="Некорректные данные. Убедитесь, что все поля заполнены числами.",
+                         icon="cancel")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при сохранении данных: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при сохранении данных: {str(e)}",
+                         icon="cancel")
 
 class SelectMonthWindow:
     def __init__(self, parent, abonent_id, on_select_callback):
         self.root = ctk.CTkToplevel(parent)
         self.root.title("Выбор месяца для редактирования")
-        self.root.geometry("400x500")
+        self.root.geometry("500x600")
         
         self.abonent_id = abonent_id
         self.on_select_callback = on_select_callback
+        
+        # Создаем основной контейнер
+        self.main_frame = ctk.CTkScrollableFrame(self.root)
+        self.main_frame.pack(fill=BOTH, expand=True, padx=20, pady=20)
         
         self.draw_widgets()
         self.load_data()
@@ -120,14 +157,24 @@ class SelectMonthWindow:
         
     def draw_widgets(self):
         # Заголовок
-        ctk.CTkLabel(self.root, text="Выберите месяц для редактирования").pack(pady=10)
+        title_frame = ctk.CTkFrame(self.main_frame)
+        title_frame.pack(fill=X, pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text="Выберите месяц для редактирования",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
         
         # Создаем фрейм для списка
-        self.list_frame = ctk.CTkScrollableFrame(self.root)
-        self.list_frame.pack(fill=BOTH, expand=True, padx=20, pady=10)
+        self.list_frame = ctk.CTkScrollableFrame(self.main_frame)
+        self.list_frame.pack(fill=BOTH, expand=True, pady=10)
         
         # Кнопка закрытия
-        ctk.CTkButton(self.root, text="Закрыть", command=self.root.destroy).pack(pady=10)
+        ctk.CTkButton(self.main_frame, 
+                     text="❌ Закрыть",
+                     font=("Roboto", 12),
+                     height=40,
+                     fg_color="transparent",
+                     border_width=2,
+                     command=self.root.destroy).pack(pady=10)
         
     def load_data(self):
         try:
@@ -136,7 +183,9 @@ class SelectMonthWindow:
             db.close_connection()
             
             if not data:
-                ctk.CTkLabel(self.list_frame, text="Нет данных для редактирования").pack(pady=10)
+                ctk.CTkLabel(self.list_frame, 
+                           text="Нет данных для редактирования",
+                           font=("Roboto", 12)).pack(pady=10)
                 return
                 
             # Сортируем данные по году и месяцу (в обратном порядке)
@@ -152,16 +201,16 @@ class SelectMonthWindow:
                     'gas': record[7]
                 }
                 
-                button_text = f"{month}/{year}"
+                button_text = f"📅 {month}/{year}"
                 details = []
                 if values['electricity'] is not None:
-                    details.append(f"Э/э: {values['electricity']}")
+                    details.append(f"⚡ {values['electricity']}")
                 if values['water'] is not None:
-                    details.append(f"Вода: {values['water']}")
+                    details.append(f"💧 {values['water']}")
                 if values['wastewater'] is not None:
-                    details.append(f"Водоотв.: {values['wastewater']}")
+                    details.append(f"🚰 {values['wastewater']}")
                 if values['gas'] is not None:
-                    details.append(f"Газ: {values['gas']}")
+                    details.append(f"🔥 {values['gas']}")
                 
                 if details:
                     button_text += f" ({', '.join(details)})"
@@ -169,12 +218,16 @@ class SelectMonthWindow:
                 button = ctk.CTkButton(
                     self.list_frame,
                     text=button_text,
+                    font=("Roboto", 12),
+                    height=40,
                     command=lambda m=month, y=year, v=values: self.select_month(m, y, v)
                 )
-                button.pack(fill=X, pady=5)
+                button.pack(fill=X, pady=5, padx=10)
                 
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при загрузке данных: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при загрузке данных: {str(e)}",
+                         icon="cancel")
             
     def select_month(self, month, year, values):
         self.on_select_callback(month, year, values)
@@ -183,9 +236,6 @@ class SelectMonthWindow:
 class MonthlyDataWindow:
     def __init__(self, parent, width, height, abonent_id, title="Учет коммунальных услуг АО_Корммаш",
                  resizable=(False, False), icon='image/korm.ico'):
-        print("\n=== Инициализация окна ввода показаний ===")
-        print(f"ID абонента: {abonent_id}")
-        
         self.root = ctk.CTkToplevel(parent)
         self.root.title(title)
         self.root.geometry(f"{width}x{height}")
@@ -195,130 +245,116 @@ class MonthlyDataWindow:
         self.abonent_id = abonent_id
         
         # Получаем информацию об услугах абонента
-        print("\nПолучение данных абонента из БД...")
         db = SqliteDB()
         self.abonent_data = db.get_abonent_by_id(self.abonent_id)
         db.close_connection()
         
-        print(f"Полученные данные абонента: {self.abonent_data}")
-        
         if not self.abonent_data:
-            print("ОШИБКА: Не удалось загрузить данные абонента")
             messagebox.showerror("Ошибка", "Не удалось загрузить данные абонента")
             self.root.destroy()
             return
             
-        print("Данные абонента успешно загружены")
+        # Создаем основной контейнер
+        self.main_frame = ctk.CTkScrollableFrame(self.root)
+        self.main_frame.pack(fill=BOTH, expand=True, padx=20, pady=20)
+        
         self.montly_widget()
         self.grab_focus()
-        print("=== Завершение инициализации окна ввода показаний ===\n")
 
     def grab_focus(self):
-        self.root.grab_set()  # фокус на окнe
-        self.root.focus_set()  # фокус на окнe
-        self.root.wait_window()  # ждем закрытия окна
+        self.root.grab_set()
+        self.root.focus_set()
+        self.root.wait_window()
 
     def montly_widget(self):
-        print("\n=== Начало создания виджетов для ввода показаний ===")
-        # Поля для ввода данных
-        input_frame = ctk.CTkScrollableFrame(self.root, height=400)  # Увеличиваем высоту фрейма
-        input_frame.pack(fill=BOTH, expand=True, padx=20, pady=10)
-        
-        print("\nДанные абонента:")
-        print(f"ID абонента: {self.abonent_id}")
-        print(f"Данные из БД: {self.abonent_data}")
-        print("\nПроверка услуг абонента:")
-        print(f"Электроэнергия: {self.abonent_data[7]}")
-        print(f"Вода: {self.abonent_data[8]}")
-        print(f"Водоотведение: {self.abonent_data[9]}")
-        print(f"Газ: {self.abonent_data[10]}")
+        # Заголовок
+        title_frame = ctk.CTkFrame(self.main_frame)
+        title_frame.pack(fill=X, pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text="Ввод показаний",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
         
         # Общие поля (месяц и год)
-        print("\nСоздание полей месяца и года")
-        month_year_frame = ctk.CTkFrame(input_frame)
-        month_year_frame.pack(fill=X, pady=5)
+        month_year_frame = ctk.CTkFrame(self.main_frame)
+        month_year_frame.pack(fill=X, pady=10)
         
         month_frame = ctk.CTkFrame(month_year_frame)
         month_frame.pack(side=LEFT, padx=5, expand=True)
-        self.month_label = ctk.CTkLabel(month_frame, text="Месяц:")
+        self.month_label = ctk.CTkLabel(month_frame, 
+                                      text="📅 Месяц:",
+                                      font=("Roboto", 14))
         self.month_label.pack(pady=5)
-        self.month_entry = ctk.CTkEntry(month_frame)
+        self.month_entry = ctk.CTkEntry(month_frame,
+                                      width=100,
+                                      height=35,
+                                      font=("Roboto", 12))
         self.month_entry.pack(pady=5)
 
         year_frame = ctk.CTkFrame(month_year_frame)
         year_frame.pack(side=LEFT, padx=5, expand=True)
-        self.year_label = ctk.CTkLabel(year_frame, text="Год:")
+        self.year_label = ctk.CTkLabel(year_frame, 
+                                     text="📅 Год:",
+                                     font=("Roboto", 14))
         self.year_label.pack(pady=5)
-        self.year_entry = ctk.CTkEntry(year_frame)
+        self.year_entry = ctk.CTkEntry(year_frame,
+                                     width=100,
+                                     height=35,
+                                     font=("Roboto", 12))
         self.year_entry.pack(pady=5)
 
-        # Разделитель
-        separator = ctk.CTkFrame(input_frame, height=2)
-        separator.pack(fill=X, pady=10)
-
-        # Поля для услуг в зависимости от настроек абонента
-        print("\nСоздание полей для услуг:")
+        # Поля для ввода показаний
+        self.entries = {}
         
         if self.abonent_data[7]:  # uses_electricity
-            print("Создание поля для электроэнергии")
-            electricity_frame = ctk.CTkFrame(input_frame)
-            electricity_frame.pack(fill=X, pady=5)
-            self.electricity_label = ctk.CTkLabel(electricity_frame, text="Электроэнергия:")
-            self.electricity_label.pack(side=LEFT, padx=5)
-            self.electricity_entry = ctk.CTkEntry(electricity_frame)
-            self.electricity_entry.pack(side=RIGHT, padx=5)
-        else:
-            print("Электроэнергия не выбрана")
-            self.electricity_entry = None
-
+            self.entries['electricity'] = self.create_entry_field("⚡ Электроэнергия")
+            
         if self.abonent_data[8]:  # uses_water
-            print("Создание поля для воды")
-            water_frame = ctk.CTkFrame(input_frame)
-            water_frame.pack(fill=X, pady=5)
-            self.water_label = ctk.CTkLabel(water_frame, text="Вода:")
-            self.water_label.pack(side=LEFT, padx=5)
-            self.water_entry = ctk.CTkEntry(water_frame)
-            self.water_entry.pack(side=RIGHT, padx=5)
-        else:
-            print("Вода не выбрана")
-            self.water_entry = None
-
+            self.entries['water'] = self.create_entry_field("💧 Вода")
+            
         if self.abonent_data[9]:  # uses_wastewater
-            print("Создание поля для водоотведения")
-            wastewater_frame = ctk.CTkFrame(input_frame)
-            wastewater_frame.pack(fill=X, pady=5)
-            self.wastewater_label = ctk.CTkLabel(wastewater_frame, text="Водоотведение:")
-            self.wastewater_label.pack(side=LEFT, padx=5)
-            self.wastewater_entry = ctk.CTkEntry(wastewater_frame)
-            self.wastewater_entry.pack(side=RIGHT, padx=5)
-        else:
-            print("Водоотведение не выбрано")
-            self.wastewater_entry = None
-
+            self.entries['wastewater'] = self.create_entry_field("🚰 Водоотведение")
+            
         if self.abonent_data[10]:  # uses_gas
-            print("Создание поля для газа")
-            gas_frame = ctk.CTkFrame(input_frame)
-            gas_frame.pack(fill=X, pady=5)
-            self.gas_label = ctk.CTkLabel(gas_frame, text="Газ:")
-            self.gas_label.pack(side=LEFT, padx=5)
-            self.gas_entry = ctk.CTkEntry(gas_frame)
-            self.gas_entry.pack(side=RIGHT, padx=5)
-        else:
-            print("Газ не выбран")
-            self.gas_entry = None
+            self.entries['gas'] = self.create_entry_field("🔥 Газ")
 
-        print("\nСоздание кнопок")
         # Кнопки
-        button_frame = ctk.CTkFrame(self.root)
-        button_frame.pack(side=BOTTOM, fill=X, padx=20, pady=10)
+        button_frame = ctk.CTkFrame(self.main_frame)
+        button_frame.pack(side=BOTTOM, fill=X, pady=20)
         
-        self.save_button = ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data)
-        self.save_button.pack(side=LEFT, padx=5)
+        ctk.CTkButton(button_frame, 
+                     text="💾 Сохранить",
+                     font=("Roboto", 12),
+                     height=40,
+                     command=self.save_data).pack(side=LEFT, padx=20, pady=5)
         
-        self.edit_button = ctk.CTkButton(button_frame, text="Редактировать показания", command=self.show_edit_window)
-        self.edit_button.pack(side=RIGHT, padx=5)
+        ctk.CTkButton(button_frame, 
+                     text="📝 Редактировать",
+                     font=("Roboto", 12),
+                     height=40,
+                     command=self.show_edit_window).pack(side=LEFT, padx=20, pady=5)
         
-        print("=== Завершение создания виджетов для ввода показаний ===\n")
+        ctk.CTkButton(button_frame, 
+                     text="❌ Отмена",
+                     font=("Roboto", 12),
+                     height=40,
+                     fg_color="transparent",
+                     border_width=2,
+                     command=self.root.destroy).pack(side=LEFT, padx=20, pady=5)
+
+    def create_entry_field(self, label_text):
+        frame = ctk.CTkFrame(self.main_frame)
+        frame.pack(fill=X, pady=10)
+        
+        ctk.CTkLabel(frame, 
+                    text=label_text,
+                    font=("Roboto", 14)).pack(side=LEFT, padx=10)
+        
+        entry = ctk.CTkEntry(frame,
+                           width=200,
+                           height=35,
+                           font=("Roboto", 12))
+        entry.pack(side=RIGHT, padx=10)
+        return entry
 
     def get_average_consumption(self, utility_type):
         """Получает среднее потребление за последние 3 месяца для указанного типа услуги"""
@@ -428,18 +464,22 @@ class MonthlyDataWindow:
             year = int(self.year_entry.get())
             
             if not (1 <= month <= 12):
-                messagebox.showerror("Ошибка", "Месяц должен быть от 1 до 12")
+                CTkMessagebox(title="Ошибка", 
+                            message="Месяц должен быть от 1 до 12",
+                            icon="cancel")
                 return
                 
             if not (2000 <= year <= 2100):
-                messagebox.showerror("Ошибка", "Год должен быть от 2000 до 2100")
+                CTkMessagebox(title="Ошибка", 
+                            message="Год должен быть от 2000 до 2100",
+                            icon="cancel")
                 return
             
             # Получаем значения только для выбранных услуг
-            electricity = float(self.electricity_entry.get()) if self.electricity_entry else None
-            water = float(self.water_entry.get()) if self.water_entry else None
-            wastewater = float(self.wastewater_entry.get()) if self.wastewater_entry else None
-            gas = float(self.gas_entry.get()) if self.gas_entry else None
+            electricity = float(self.entries['electricity'].get()) if 'electricity' in self.entries else None
+            water = float(self.entries['water'].get()) if 'water' in self.entries else None
+            wastewater = float(self.entries['wastewater'].get()) if 'wastewater' in self.entries else None
+            gas = float(self.entries['gas'].get()) if 'gas' in self.entries else None
             
             # Проверяем введенные значения на необычные отклонения
             if electricity is not None:
@@ -456,14 +496,20 @@ class MonthlyDataWindow:
             db.insert_monthly_data(self.abonent_id, month, year, electricity, water, wastewater, gas)
             db.close_connection()
             
-            messagebox.showinfo("Успех", "Данные успешно сохранены")
+            CTkMessagebox(title="Успех", 
+                         message="Данные успешно сохранены",
+                         icon="check")
             
             # Уничтожаем окно только после успешного сохранения
             self.root.destroy()
             
         except ValueError as e:
-            messagebox.showerror("Ошибка", "Проверьте правильность введенных данных. Все значения должны быть числами.")
+            CTkMessagebox(title="Ошибка", 
+                         message="Проверьте правильность введенных данных. Все значения должны быть числами.",
+                         icon="cancel")
         except Exception as e:
-            messagebox.showerror("Ошибка", f"Ошибка при сохранении данных: {str(e)}")
+            CTkMessagebox(title="Ошибка", 
+                         message=f"Ошибка при сохранении данных: {str(e)}",
+                         icon="cancel")
 
         

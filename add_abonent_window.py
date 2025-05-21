@@ -120,61 +120,98 @@ class AddAbonentWindow:
         return frame
 
     def draw_abonent_widget(self):
+        # Заголовок
+        title_frame = ctk.CTkFrame(self.main_frame)
+        title_frame.pack(fill=X, pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text="Добавление нового абонента",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
+
         # Фрейм для названия организации
         name_frame = ctk.CTkFrame(self.main_frame)
-        name_frame.pack(fill=X, pady=5)
+        name_frame.pack(fill=X, pady=10)
         
-        ctk.CTkLabel(name_frame, text="Введите наименование организации абонента").pack(pady=5)
-        self.name_entry = ctk.CTkEntry(name_frame, width=250)
+        ctk.CTkLabel(name_frame, 
+                    text="Наименование организации",
+                    font=("Roboto", 14)).pack(pady=5)
+        self.name_entry = ctk.CTkEntry(name_frame, 
+                                     width=300,
+                                     height=35,
+                                     font=("Roboto", 12))
         self.name_entry.pack(pady=5)
         
         # Фрейм для выбора услуг
-        services_label_frame = ctk.CTkFrame(self.main_frame)
-        services_label_frame.pack(fill=X, pady=5)
-        
-        ctk.CTkLabel(services_label_frame, 
-                    text="Выберите услуги, которыми пользуется абонент:").pack(pady=5)
-
-        # Фрейм для чекбоксов услуг
         services_frame = ctk.CTkFrame(self.main_frame)
-        services_frame.pack(fill=X, pady=5)
+        services_frame.pack(fill=X, pady=10)
+        
+        ctk.CTkLabel(services_frame, 
+                    text="Выберите услуги",
+                    font=("Roboto", 14)).pack(pady=5)
 
         # Чекбоксы для выбора услуг
-        ctk.CTkCheckBox(services_frame, text="Электроэнергия", 
+        services_grid = ctk.CTkFrame(services_frame)
+        services_grid.pack(fill=X, pady=5)
+
+        # Создаем сетку чекбоксов
+        ctk.CTkCheckBox(services_grid, 
+                       text="⚡ Электроэнергия",
+                       font=("Roboto", 12),
                        variable=self.uses_electricity,
-                       command=lambda: self.toggle_service_entry("electricity")).pack(anchor=W, pady=2)
+                       command=lambda: self.toggle_service_entry("electricity")).pack(anchor=W, pady=5)
         
-        ctk.CTkCheckBox(services_frame, text="Коэффициент трансформации", 
+        ctk.CTkCheckBox(services_grid, 
+                       text="📊 Коэффициент трансформации",
+                       font=("Roboto", 12),
                        variable=self.has_transformation_ratio,
-                       command=lambda: self.toggle_service_entry("transformation_ratio")).pack(anchor=W, pady=2)
+                       command=lambda: self.toggle_service_entry("transformation_ratio")).pack(anchor=W, pady=5)
         
-        ctk.CTkCheckBox(services_frame, text="Вода", 
+        ctk.CTkCheckBox(services_grid, 
+                       text="💧 Вода",
+                       font=("Roboto", 12),
                        variable=self.uses_water,
-                       command=lambda: self.toggle_service_entry("water")).pack(anchor=W, pady=2)
+                       command=lambda: self.toggle_service_entry("water")).pack(anchor=W, pady=5)
         
-        ctk.CTkCheckBox(services_frame, text="Водоотведение", 
+        ctk.CTkCheckBox(services_grid, 
+                       text="🚰 Водоотведение",
+                       font=("Roboto", 12),
                        variable=self.uses_wastewater,
-                       command=lambda: self.toggle_service_entry("wastewater")).pack(anchor=W, pady=2)
+                       command=lambda: self.toggle_service_entry("wastewater")).pack(anchor=W, pady=5)
         
-        ctk.CTkCheckBox(services_frame, text="Газ", 
+        ctk.CTkCheckBox(services_grid, 
+                       text="🔥 Газ",
+                       font=("Roboto", 12),
                        variable=self.uses_gas,
-                       command=lambda: self.toggle_service_entry("gas")).pack(anchor=W, pady=2)
+                       command=lambda: self.toggle_service_entry("gas")).pack(anchor=W, pady=5)
 
         # Фрейм для полей ввода начальных показаний
-        values_label_frame = ctk.CTkFrame(self.main_frame)
-        values_label_frame.pack(fill=X, pady=5)
+        values_frame = ctk.CTkFrame(self.main_frame)
+        values_frame.pack(fill=X, pady=10)
         
-        ctk.CTkLabel(values_label_frame, text="Начальные показания:").pack(pady=5)
+        ctk.CTkLabel(values_frame, 
+                    text="Начальные показания",
+                    font=("Roboto", 14)).pack(pady=5)
 
-        self.values_frame = ctk.CTkFrame(self.main_frame)
+        self.values_frame = ctk.CTkFrame(values_frame)
         self.values_frame.pack(fill=X, pady=5)
 
         # Фрейм для кнопок
         button_frame = ctk.CTkFrame(self.main_frame)
-        button_frame.pack(side=BOTTOM, fill=X, pady=10)
+        button_frame.pack(side=BOTTOM, fill=X, pady=20)
         
-        ctk.CTkButton(button_frame, text="Сохранить", command=self.save_data).pack(side=LEFT, padx=30, pady=5)
-        ctk.CTkButton(button_frame, text="Отмена", command=self.on_closing).pack(side=LEFT, padx=30, pady=5)
+        # Кнопки с современным дизайном
+        ctk.CTkButton(button_frame, 
+                     text="💾 Сохранить",
+                     font=("Roboto", 12),
+                     height=40,
+                     command=self.save_data).pack(side=LEFT, padx=20, pady=5)
+        
+        ctk.CTkButton(button_frame, 
+                     text="❌ Отмена",
+                     font=("Roboto", 12),
+                     height=40,
+                     fg_color="transparent",
+                     border_width=2,
+                     command=self.on_closing).pack(side=LEFT, padx=20, pady=5)
 
     def toggle_service_entry(self, service_type):
         """Показывает или скрывает поле ввода для выбранной услуги"""
@@ -182,11 +219,11 @@ class AddAbonentWindow:
             return
 
         service_labels = {
-            "electricity": "Электроэнергия",
-            "transformation_ratio": "Коэффициент трансформации",
-            "water": "Вода",
-            "wastewater": "Водоотведение",
-            "gas": "Газ"
+            "electricity": "⚡ Номер счетчика электроэнергии",
+            "transformation_ratio": "📊 Коэффициент трансформации",
+            "water": "💧 Номер счетчика воды",
+            "wastewater": "🚰 Номер счетчика водоотведения",
+            "gas": "🔥 Номер счетчика газа"
         }
         
         try:
@@ -199,11 +236,16 @@ class AddAbonentWindow:
                 del self.entries[service_type]
             else:
                 # Создаем новые поля
-                label = ctk.CTkLabel(self.values_frame, text=service_labels[service_type])
+                label = ctk.CTkLabel(self.values_frame, 
+                                   text=service_labels[service_type],
+                                   font=("Roboto", 12))
                 label.pack(pady=2)
                 self.labels[service_type] = label
                 
-                entry = ctk.CTkEntry(self.values_frame, width=250)
+                entry = ctk.CTkEntry(self.values_frame, 
+                                   width=300,
+                                   height=35,
+                                   font=("Roboto", 12))
                 entry.pack(pady=2)
                 self.entries[service_type] = entry
         except Exception as e:

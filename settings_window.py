@@ -27,29 +27,46 @@ class SettingsWindow:
         main_frame = ctk.CTkScrollableFrame(self.root)
         main_frame.pack(padx=20, pady=20, fill="both", expand=True)
         
+        # Заголовок
+        title_frame = ctk.CTkFrame(main_frame)
+        title_frame.pack(fill="x", pady=(0, 20))
+        ctk.CTkLabel(title_frame, 
+                    text="Настройки приложения",
+                    font=("Roboto", 20, "bold")).pack(pady=10)
+        
         # Секция пути сохранения
         path_frame = ctk.CTkFrame(main_frame)
-        path_frame.pack(padx=10, pady=5, fill="x")
+        path_frame.pack(padx=10, pady=10, fill="x")
         
-        path_label = ctk.CTkLabel(path_frame, text="Папка для сохранения реестров:")
-        path_label.pack(side="left", padx=5)
+        path_label = ctk.CTkLabel(path_frame, 
+                                text="📁 Папка для сохранения реестров:",
+                                font=("Roboto", 14))
+        path_label.pack(pady=5)
         
-        self.path_entry = ctk.CTkEntry(path_frame)
+        path_input_frame = ctk.CTkFrame(path_frame)
+        path_input_frame.pack(fill="x", padx=5, pady=5)
+        
+        self.path_entry = ctk.CTkEntry(path_input_frame,
+                                     height=35,
+                                     font=("Roboto", 12))
         self.path_entry.pack(side="left", padx=5, fill="x", expand=True)
         self.path_entry.insert(0, self.settings.get("save_path", r"C:\Реестры по абонентам"))
         
-        # Кнопка 'Обзор' теперь под полем ввода
-        browse_button = ctk.CTkButton(main_frame, text="Обзор",
+        browse_button = ctk.CTkButton(path_input_frame, 
+                                    text="📂 Обзор",
+                                    font=("Roboto", 12),
+                                    height=35,
                                     command=self.browse_save_path)
-        browse_button.pack(padx=10, pady=(0, 10), anchor="w")
+        browse_button.pack(side="right", padx=5)
         
         # Секция подписей
         signatures_frame = ctk.CTkFrame(main_frame)
         signatures_frame.pack(padx=10, pady=10, fill="both", expand=True)
         
         # Заголовок секции подписей
-        title_label = ctk.CTkLabel(signatures_frame, text="Подписи в реестре",
-                                 font=("Arial", 14, "bold"))
+        title_label = ctk.CTkLabel(signatures_frame, 
+                                 text="✍️ Подписи в реестре",
+                                 font=("Roboto", 16, "bold"))
         title_label.pack(pady=10)
         
         # Список подписантов
@@ -62,17 +79,29 @@ class SettingsWindow:
             self.add_signature_field(signatures_frame, signature)
         
         # Кнопка добавления подписи
-        add_button = ctk.CTkButton(signatures_frame, text="Добавить подпись",
-                                  command=lambda: self.add_signature_field(signatures_frame))
+        add_button = ctk.CTkButton(signatures_frame, 
+                                 text="➕ Добавить подпись",
+                                 font=("Roboto", 12),
+                                 height=35,
+                                 command=lambda: self.add_signature_field(signatures_frame))
         add_button.pack(pady=10)
         
         # Кнопки внизу окна
         buttons_frame = ctk.CTkFrame(self.root)
         buttons_frame.pack(padx=20, pady=10, fill="x")
-        save_button = ctk.CTkButton(buttons_frame, text="Сохранить",
+        
+        save_button = ctk.CTkButton(buttons_frame, 
+                                  text="💾 Сохранить",
+                                  font=("Roboto", 12),
+                                  height=40,
                                   command=self.save_settings)
         save_button.pack(side="right", padx=5)
-        cancel_button = ctk.CTkButton(buttons_frame, text="Отмена",
+        
+        cancel_button = ctk.CTkButton(buttons_frame, 
+                                    text="❌ Отмена",
+                                    font=("Roboto", 12),
+                                    height=40,
+                                    fg_color="red",
                                     command=self.root.destroy)
         cancel_button.pack(side="right", padx=5)
         
@@ -82,15 +111,25 @@ class SettingsWindow:
         frame.pack(padx=5, pady=5, fill="x")
         
         # Поле для должности
-        position_entry = ctk.CTkEntry(frame, placeholder_text="Должность")
+        position_entry = ctk.CTkEntry(frame, 
+                                    placeholder_text="Должность",
+                                    height=35,
+                                    font=("Roboto", 12))
         position_entry.pack(side="left", padx=5, fill="x", expand=True)
         
         # Поле для фамилии
-        name_entry = ctk.CTkEntry(frame, placeholder_text="Фамилия И.О.")
+        name_entry = ctk.CTkEntry(frame, 
+                                placeholder_text="Фамилия И.О.",
+                                height=35,
+                                font=("Roboto", 12))
         name_entry.pack(side="left", padx=5, fill="x", expand=True)
         
         # Кнопка удаления
-        delete_button = ctk.CTkButton(frame, text="✕", width=30,
+        delete_button = ctk.CTkButton(frame, 
+                                    text="❌",
+                                    width=40,
+                                    height=35,
+                                    fg_color="red",
                                     command=lambda: self.remove_signature_field(frame))
         delete_button.pack(side="right", padx=5)
         
